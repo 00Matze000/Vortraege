@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hardware · 3D-Demo · GPU vs TPU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#000;
+    --ink:#fff;
+    --ink-dim:rgba(255,255,255,.80);
+    --ink-mute:rgba(255,255,255,.58);
+    --blue:#4f8ef7;
+    --blue-soft:rgba(79,142,247,.16);
+    --amber:#f5b84a;
+    --red:#ff5a5f;
+    --line:rgba(255,255,255,.14);
+    --line-2:rgba(255,255,255,.24);
+  }
+  html,body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",sans-serif;min-height:100vh;overflow-x:hidden}
+
+  body{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:40px;
+    background:
+      radial-gradient(60% 80% at 50% 40%,rgba(79,142,247,.06),transparent 70%),
+      #000;
+  }
+  h1{
+    font-family:"Instrument Serif",serif;font-weight:400;font-size:clamp(40px,6vw,72px);
+    line-height:1.05;letter-spacing:-0.02em;text-align:center;max-width:22ch;
+  }
+  h1 em{font-style:italic;color:var(--blue)}
+  .subtitle{
+    font-size:15px;color:var(--ink-dim);max-width:58ch;line-height:1.55;text-align:center;
+  }
+  .subtitle em{font-style:italic;color:var(--blue)}
+  .chrome{
+    font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);
+    display:flex;align-items:center;gap:10px;
+  }
+  .chrome::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px var(--blue)}
+
+  .demo-grid{
+    margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:24px;
+    width:100%;max-width:1200px;
+  }
+  .demo-card{
+    border:1px solid var(--line);border-radius:8px;
+    background:linear-gradient(180deg,rgba(255,255,255,.015),transparent);
+    overflow:hidden;display:flex;flex-direction:column;
+  }
+  .demo-card__head{
+    padding:18px 22px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .demo-card__title{
+    font-family:"Instrument Serif",serif;font-size:36px;line-height:1;letter-spacing:-0.02em;
+  }
+  .demo-card__title em{font-style:italic;color:var(--blue)}
+  .demo-card__tag{
+    font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--blue);padding:4px 10px;border:1px solid var(--line-2);border-radius:3px;background:var(--blue-soft);
+  }
+  .demo-card__canvas{
+    width:100%;aspect-ratio:1;position:relative;
+    background:radial-gradient(60% 80% at 50% 50%,rgba(79,142,247,.08),transparent 70%);
+  }
+  .demo-card__canvas canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+  .demo-card__foot{
+    padding:16px 22px;border-top:1px solid var(--line);
+    font-size:14px;color:var(--ink-dim);line-height:1.5;
+  }
+  .demo-card__foot strong{color:var(--ink);font-weight:500}
+
+  footer{
+    margin-top:30px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;
+    color:var(--ink-mute);text-align:center;
+  }
+  footer code{color:var(--blue)}
+
+  @media (max-width:800px){
+    .demo-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<div class="chrome">Hardware · 3D-Demo · Three.js</div>
+<h1>GPU oder <em>TPU</em>? — Zwei <em>Chips</em>, zwei Welten.</h1>
+<p class="subtitle">
+  Aus 3D-Primitives gebaute, stilisierte Chips. <em>GPU:</em> Gaming-Herkunft, Memory drumherum, Kühlkörper-Finnen.
+  <em>TPU:</em> klinisch-minimalistisch, systolisches Array auf der Oberfläche.
+</p>
+
+<div class="demo-grid">
+  <div class="demo-card">
+    <div class="demo-card__head">
+      <div class="demo-card__title"><em>GPU</em></div>
+      <div class="demo-card__tag">Der Allrounder</div>
+    </div>
+    <div class="demo-card__canvas" id="gpuCanvas"></div>
+    <div class="demo-card__foot">
+      <strong>Architektur:</strong> Silver X-Frame · Dual-Flow-Lüfter · Heatpipes &amp; Heatsink-Finnen · RGB-Strip · GeForce-RTX-Signage · NVLink · Dual-BIOS-Switch · FE-Badge · 12VHPWR-Stecker · VRM-Chokes &amp; SMD-Komponenten · PCIe-Edge-Finger · Backplate-Gravur mit Ventilation &amp; Hologram-Sticker.
+    </div>
+  </div>
+
+  <div class="demo-card">
+    <div class="demo-card__head">
+      <div class="demo-card__title"><em>TPU</em></div>
+      <div class="demo-card__tag">Der Spezialist</div>
+    </div>
+    <div class="demo-card__canvas" id="tpuCanvas"></div>
+    <div class="demo-card__foot">
+      <strong>Architektur:</strong> Quadratisches Package · Systolic-Array auf der Oberfläche (16×16 Raster) · Heat-Spreader-Kontur · Einfache Ball-Grid-Array-Anschlüsse unten.
+    </div>
+  </div>
+</div>
+
+<footer>
+  // Klick-Ziehen zum Drehen · <code>Three.js r160</code> · alles aus Primitives gebaut — keine externen 3D-Modelle
+</footer>
+
+<script>
+  // ────────────────────────────────────────────────────
+  // Helper: Text als Canvas-Texture (für Logos/Beschriftungen)
+  // ────────────────────────────────────────────────────
+  function makeTextTexture(text, { color = '#ffffff', font = 'bold 96px Arial', italic = false, width = 512, height = 128 } = {}){
+    const cv = document.createElement('canvas');
+    cv.width = width; cv.height = height;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = color;
+    ctx.font = (italic ? 'italic ' : '') + font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, width/2, height/2);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  // ────────────────────────────────────────────────────
+  // GPU Factory — RTX 4090 Founders Edition Style
+  // Signature-X-Frame, Dual-Flow-Lüfter, "RTX 4090" Gravur, 3-Slot-Proportionen
+  // ────────────────────────────────────────────────────
+  function buildGPU(){
+    const group = new THREE.Group();
+    group.userData.type = 'gpu';
+
+    // Proportionen ähnlich 4090 FE — mit mehr Tiefe & Dicke (realistischerer 3-Slot-Look)
+    const L = 5.6, D = 2.6, H = 0.95;
+
+    // PCB (eingebettet, nur seitlich ansatzweise sichtbar)
+    const pcb = new THREE.Mesh(
+      new THREE.BoxGeometry(L - 0.1, 0.08, D - 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x0a1512, metalness: 0.45, roughness: 0.55 })
+    );
+    pcb.position.y = 0.04;
+    group.add(pcb);
+
+    // ─── Haupt-Shroud (matt-schwarz) ───
+    const shroudMat = new THREE.MeshStandardMaterial({ color: 0x111115, metalness: 0.55, roughness: 0.35 });
+    const shroud = new THREE.Mesh(new THREE.BoxGeometry(L, H, D), shroudMat);
+    shroud.position.y = 0.08 + H/2;
+    group.add(shroud);
+
+    // ─── Silver X-Frame auf der Oberseite (Signature der Founders Edition) ───
+    // Zwei gekreuzte Metall-Balken im Winkel der Karten-Diagonalen
+    const diagAngle = Math.atan2(D, L);
+    const diagLen = Math.hypot(L, D);
+    const xFrameMat = new THREE.MeshStandardMaterial({
+      color: 0xb8b8c2, metalness: 0.95, roughness: 0.22,
+      emissive: 0x202028, emissiveIntensity: 0.15
+    });
+    // Bar 1 (↘ Diagonale)
+    const xBar1 = new THREE.Mesh(
+      new THREE.BoxGeometry(diagLen - 0.25, 0.05, 0.38),
+      xFrameMat
+    );
+    xBar1.position.y = 0.08 + H + 0.025;
+    xBar1.rotation.y = diagAngle;
+    group.add(xBar1);
+    // Bar 2 (↗ Diagonale)
+    const xBar2 = new THREE.Mesh(
+      new THREE.BoxGeometry(diagLen - 0.25, 0.05, 0.38),
+      xFrameMat
+    );
+    xBar2.position.y = 0.08 + H + 0.025;
+    xBar2.rotation.y = -diagAngle;
+    group.add(xBar2);
+
+    // Zentrale X-Knoten-Abdeckung (kleiner Quader wo sich die Bars treffen)
+    const xCenter = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.055, 0.5),
+      xFrameMat
+    );
+    xCenter.position.y = 0.08 + H + 0.028;
+    group.add(xCenter);
+
+    // ─── Silver Chrome-Kanten-Leisten (umlaufende Akzent-Bänder oben) ───
+    // Front-Kante (Z = +D/2)
+    const edgeFront = new THREE.Mesh(
+      new THREE.BoxGeometry(L, 0.05, 0.05),
+      xFrameMat
+    );
+    edgeFront.position.set(0, 0.08 + H - 0.02, D/2 - 0.01);
+    group.add(edgeFront);
+    // Rear-Kante (Z = -D/2)
+    const edgeRear = new THREE.Mesh(
+      new THREE.BoxGeometry(L, 0.05, 0.05),
+      xFrameMat
+    );
+    edgeRear.position.set(0, 0.08 + H - 0.02, -D/2 + 0.01);
+    group.add(edgeRear);
+    // Linke Kante (X = -L/2)
+    const edgeLeft = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.05, D),
+      xFrameMat
+    );
+    edgeLeft.position.set(-L/2 + 0.01, 0.08 + H - 0.02, 0);
+    group.add(edgeLeft);
+    // Rechte Kante (X = +L/2) — kürzer weil Bracket sie unterbricht
+    const edgeRight = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.05, D),
+      xFrameMat
+    );
+    edgeRight.position.set(L/2 - 0.01, 0.08 + H - 0.02, 0);
+    group.add(edgeRight);
+
+    // ─── Dunkle Panel-Einsätze in den 4 X-Frame-Quadranten ───
+    // Subtile Brushed-Black-Oberfläche mit winzigen horizontalen Linien
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x080810, metalness: 0.3, roughness: 0.75 });
+    // Links-Panel (X ≈ -1.5, beinhaltet RTX 4090 Label)
+    const panelL = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.02, 0.9), panelMat);
+    panelL.position.set(-1.55, 0.08 + H + 0.005, 0);
+    group.add(panelL);
+    // Rechts-Panel (X ≈ +1.5, beinhaltet Lüfter-Bereich — leer / Cutout)
+    // Hinten-Panel (Z ≈ -0.75)
+    const panelB = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.02, 0.65), panelMat);
+    panelB.position.set(0, 0.08 + H + 0.005, -0.65);
+    group.add(panelB);
+    // Vorne-Panel (Z ≈ +0.75)
+    const panelF = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.02, 0.65), panelMat);
+    panelF.position.set(0, 0.08 + H + 0.005, 0.65);
+    group.add(panelF);
+
+    // ─── RTX 4090 Schriftzug auf dem linken Panel (silver engraved look) ───
+    const rtxTex = makeTextTexture('RTX  4090', { color: '#c8c8d2', font: 'bold 110px Arial', width: 1024, height: 220 });
+    const rtxLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.15, 0.25),
+      new THREE.MeshBasicMaterial({ map: rtxTex, transparent: true })
+    );
+    rtxLabel.rotation.x = -Math.PI / 2;
+    rtxLabel.position.set(-1.55, 0.08 + H + 0.018, 0);
+    group.add(rtxLabel);
+
+    // ─── LARGE FAN — Dual-Flow-Design, rechts auf dem Shroud ───
+    function makeBigFan(xPos, flipY = false){
+      const fanGroup = new THREE.Group();
+
+      // Äußerer Ring (dunkler Rahmen um den Lüfter)
+      const outerRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.9, 0.06, 10, 48),
+        new THREE.MeshStandardMaterial({ color: 0x16161e, metalness: 0.55, roughness: 0.4 })
+      );
+      outerRing.rotation.x = Math.PI / 2;
+      fanGroup.add(outerRing);
+
+      // Innere Well (tiefer schwarzer Bereich)
+      const wellDepth = 0.22;
+      const wellSide = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.88, 0.88, wellDepth, 48, 1, true),
+        new THREE.MeshStandardMaterial({ color: 0x020204, metalness: 0.4, roughness: 0.9, side: THREE.DoubleSide })
+      );
+      wellSide.position.y = -wellDepth/2;
+      fanGroup.add(wellSide);
+
+      // Boden der Well
+      const wellBottom = new THREE.Mesh(
+        new THREE.CircleGeometry(0.88, 48),
+        new THREE.MeshStandardMaterial({ color: 0x030306, metalness: 0.3, roughness: 0.95 })
+      );
+      wellBottom.rotation.x = -Math.PI / 2;
+      wellBottom.position.y = -wellDepth + 0.005;
+      fanGroup.add(wellBottom);
+
+      // Heatsink-Finnen sichtbar durch den Lüfter (dünne Parallel-Linien am Boden)
+      const finMat = new THREE.MeshStandardMaterial({ color: 0x252530, metalness: 0.7, roughness: 0.3 });
+      for(let i = 0; i < 13; i++){
+        const fin = new THREE.Mesh(
+          new THREE.BoxGeometry(1.6, 0.04, 0.04),
+          finMat
+        );
+        fin.position.set(0, -wellDepth + 0.03, -0.75 + i * 0.125);
+        fanGroup.add(fin);
+      }
+
+      // ROTOR-Gruppe — langsamer, realistischere Blade-Form
+      const rotor = new THREE.Group();
+      rotor.userData.isFanRotor = true;
+      rotor.userData.spinSpeed = 0.028 + Math.random() * 0.012;
+
+      // Swept-Sichel-Blade via ExtrudeGeometry (sieht aus wie echte GPU-Lüfterblätter)
+      // Shape liegt in XY-Ebene; wird später in die XZ-Ebene rotiert (horizontale Blade)
+      const bladeShape = new THREE.Shape();
+      // Innenkante (am Hub) — schmal
+      bladeShape.moveTo(0.20, -0.03);
+      // Leading Edge — sweep outward und vorwärts
+      bladeShape.bezierCurveTo(0.42, -0.08, 0.72, -0.02, 0.88, 0.06);
+      // Tip — kleine Rundung
+      bladeShape.quadraticCurveTo(0.90, 0.14, 0.84, 0.20);
+      // Trailing Edge — sweept zurück zum Hub (die Sichel-Form!)
+      bladeShape.bezierCurveTo(0.58, 0.28, 0.30, 0.22, 0.20, 0.10);
+      // Close
+      bladeShape.lineTo(0.20, -0.03);
+
+      const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, {
+        depth: 0.024,
+        bevelEnabled: true,
+        bevelThickness: 0.006,
+        bevelSize: 0.006,
+        bevelSegments: 2,
+        steps: 1
+      });
+      // Zentrieren auf Z
+      bladeGeo.translate(0, 0, -0.012);
+      // Shape-Ebene (XY) → horizontale Ebene (XZ) drehen
+      bladeGeo.rotateX(-Math.PI / 2);
+
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0x1a1a22, metalness: 0.4, roughness: 0.45,
+        side: THREE.DoubleSide
+      });
+
+      const bladeCount = 9;
+      for(let i = 0; i < bladeCount; i++){
+        const holder = new THREE.Group();
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        // Pitch: Blade um seine Längsachse (X) kippen — aerodynamische Schrägstellung
+        blade.rotation.x = -0.38;
+        holder.add(blade);
+        holder.rotation.y = (i / bladeCount) * Math.PI * 2;
+        rotor.add(holder);
+      }
+
+      // Zentraler Hub — breit und prominent
+      const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.26, 0.08, 32),
+        new THREE.MeshStandardMaterial({ color: 0x0c0c14, metalness: 0.92, roughness: 0.15 })
+      );
+      hub.position.y = 0.015;
+      rotor.add(hub);
+
+      // Hub-Logo (grüner NVIDIA-Kreis, dreht mit)
+      const hubLogo = new THREE.Mesh(
+        new THREE.CircleGeometry(0.14, 24),
+        new THREE.MeshBasicMaterial({ color: 0x76b900, transparent: true, opacity: 0.85 })
+      );
+      hubLogo.rotation.x = -Math.PI / 2;
+      hubLogo.position.y = 0.06;
+      rotor.add(hubLogo);
+      // Innerer Hub-Dot
+      const hubCore = new THREE.Mesh(
+        new THREE.CircleGeometry(0.05, 16),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+      );
+      hubCore.rotation.x = -Math.PI / 2;
+      hubCore.position.y = 0.065;
+      rotor.add(hubCore);
+
+      fanGroup.add(rotor);
+      if(flipY){ fanGroup.rotation.x = Math.PI; }
+      fanGroup.position.set(xPos, 0, 0);
+      return fanGroup;
+    }
+    // Top-Fan — einziger Lüfter auf der Shroud-Oberseite, flach eingelassen
+    const topFan = makeBigFan(1.3, false);
+    topFan.position.y = 0.08 + H - 0.02;  // 0.02 unter Shroud-Top
+    group.add(topFan);
+
+    // ─── Backplate (dunkel, mit GeForce-Schriftzug) ───
+    const backplate = new THREE.Mesh(
+      new THREE.BoxGeometry(L, 0.04, D),
+      new THREE.MeshStandardMaterial({ color: 0x06060a, metalness: 0.65, roughness: 0.35 })
+    );
+    backplate.position.y = 0.09;
+    group.add(backplate);
+
+    // ─── NVIDIA-Schriftzug auf Front-Seite (kleinere Akzent-Position) ───
+    const nvTex = makeTextTexture('NVIDIA', { color: '#76b900', font: 'italic bold 82px Arial', width: 1024, height: 180 });
+    const nvLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.3, 0.18),
+      new THREE.MeshBasicMaterial({ map: nvTex, transparent: true, opacity: 0.95 })
+    );
+    nvLabel.position.set(1.6, 0.08 + H * 0.72, D/2 + 0.005);
+    group.add(nvLabel);
+
+    // Subtile Green-Glow-Plane hinter Schriftzug
+    const nvGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 0.28),
+      new THREE.MeshBasicMaterial({ color: 0x76b900, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    nvGlow.position.copy(nvLabel.position);
+    nvGlow.position.z -= 0.002;
+    group.add(nvGlow);
+
+    // ─── Display-Bracket mit I/O-Ports (rechts) ───
+    const bracket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, H + 0.1, D),
+      new THREE.MeshStandardMaterial({ color: 0x18181e, metalness: 0.6, roughness: 0.4 })
+    );
+    bracket.position.set(L/2 + 0.06, 0.08 + H/2, 0);
+    group.add(bracket);
+
+    // Bracket Ventilations-Schlitze
+    const slotMat = new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 0.2, roughness: 0.9 });
+    for(let i = 0; i < 14; i++){
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.08), slotMat);
+      slot.position.set(L/2 + 0.12, 0.08 + H * 0.88, -0.95 + i * 0.14);
+      group.add(slot);
+    }
+
+    // ─── I/O-Ports — detailliert (Metall-Frame, Cavity, Kunststoff-Zunge, Gold-Pins) ───
+    function makePort(type){
+      const pg = new THREE.Group();
+      const isH = type === 'hdmi';
+      const pW = 0.19, pH = isH ? 0.085 : 0.07;
+      const frameT = 0.012, cavityD = 0.07;
+
+      const frameM  = new THREE.MeshStandardMaterial({ color: 0x808088, metalness: 0.9,  roughness: 0.26 });
+      const blackM  = new THREE.MeshStandardMaterial({ color: 0x050507, metalness: 0.2,  roughness: 0.95 });
+      const tongueM = new THREE.MeshStandardMaterial({
+        color: isH ? 0xe8dcb8 : 0xece5cf, metalness: 0.12, roughness: 0.7
+      });
+      const pinLocal = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.92, roughness: 0.18 });
+      const clipM    = new THREE.MeshStandardMaterial({ color: 0x9c9ca4, metalness: 0.88, roughness: 0.28 });
+
+      // Metall-Frame (4 Kanten um die Öffnung — das sichtbare silberne "Port-Fenster")
+      const frameLen = pW + 2*frameT;
+      const frameDepth = 0.018;
+      const ft = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameT, frameLen), frameM);
+      ft.position.set(frameDepth/2, pH/2 + frameT/2, 0); pg.add(ft);
+      const fb = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameT, frameLen), frameM);
+      fb.position.set(frameDepth/2, -pH/2 - frameT/2, 0); pg.add(fb);
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, pH, frameT), frameM);
+      fl.position.set(frameDepth/2, 0, -pW/2 - frameT/2); pg.add(fl);
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, pH, frameT), frameM);
+      fr.position.set(frameDepth/2, 0, pW/2 + frameT/2); pg.add(fr);
+
+      // Cavity (dunkler Innenraum — die eigentliche "Öffnung")
+      const cav = new THREE.Mesh(new THREE.BoxGeometry(cavityD, pH, pW), blackM);
+      cav.position.set(-cavityD/2, 0, 0); pg.add(cav);
+
+      // Kunststoff-Zunge im Inneren (das weiße/beige Plastikteil mit den Kontakten)
+      const tW = isH ? pW * 0.74 : pW * 0.82;
+      const tH = 0.012;
+      const tD = 0.052;
+      const tY = isH ? 0.014 : 0;  // HDMI-Zunge sitzt in der oberen Hälfte
+      const tongue = new THREE.Mesh(new THREE.BoxGeometry(tD, tH, tW), tongueM);
+      tongue.position.set(-tD/2 - 0.01, tY, 0); pg.add(tongue);
+
+      // Gold-Kontakt-Pins auf der Zunge (Oberseite)
+      const pinCount = isH ? 19 : 20;
+      const pinSpace = tW / (pinCount + 1);
+      for(let i = 0; i < pinCount; i++){
+        const pin = new THREE.Mesh(
+          new THREE.BoxGeometry(tD * 0.75, 0.0025, pinSpace * 0.42),
+          pinLocal
+        );
+        pin.position.set(-tD/2 - 0.006, tY + tH/2 + 0.002, -tW/2 + (i+1) * pinSpace);
+        pg.add(pin);
+      }
+
+      // DP-Rastnase (charakteristische kleine Einkerbung oben)
+      if(!isH){
+        const notch = new THREE.Mesh(new THREE.BoxGeometry(frameDepth * 0.9, 0.009, 0.028), clipM);
+        notch.position.set(frameDepth/2, pH/2 - 0.006, -pW/2 + 0.035);
+        pg.add(notch);
+      }
+      // HDMI hat eine zweite Reihe Pins unterhalb der Zunge (19-Pin-Layout = 2 Reihen)
+      if(isH){
+        for(let i = 0; i < 10; i++){
+          const lowPin = new THREE.Mesh(
+            new THREE.BoxGeometry(tD * 0.5, 0.002, pinSpace * 0.4),
+            pinLocal
+          );
+          lowPin.position.set(-tD/2 - 0.008, tY - tH/2 - 0.002, -tW/2 + (i+1) * (tW / 11));
+          pg.add(lowPin);
+        }
+      }
+
+      return pg;
+    }
+
+    // HDMI (oben)
+    const hdmiPort = makePort('hdmi');
+    hdmiPort.position.set(L/2 + 0.13, 0.55, -0.65);
+    group.add(hdmiPort);
+    // 3× DisplayPort
+    [-0.25, 0.1, 0.45].forEach(z => {
+      const dp = makePort('dp');
+      dp.position.set(L/2 + 0.13, 0.32, z);
+      group.add(dp);
+    });
+
+    // ─── 16-Pin 12VHPWR-Stecker auf der Oberseite rechts ───
+    const pwrHousing = new THREE.Mesh(
+      new THREE.BoxGeometry(1.1, 0.2, 0.28),
+      new THREE.MeshStandardMaterial({ color: 0x0f0f18, metalness: 0.35, roughness: 0.65 })
+    );
+    pwrHousing.position.set(-0.3, 0.08 + H + 0.12, -D/2 + 0.17);
+    group.add(pwrHousing);
+    const pinMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.25 });
+    for(let i = 0; i < 8; i++){
+      for(let j = 0; j < 2; j++){
+        const pin = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 0.05), pinMat);
+        pin.position.set(-0.3 - 0.4 + i * 0.115, 0.08 + H + 0.17, -D/2 + 0.1 + j * 0.14);
+        group.add(pin);
+      }
+    }
+
+    // ─── PCIe-Edge-Finger (vorne unten) ───
+    const pcieMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 });
+    for(let i = 0; i < 30; i++){
+      const finger = new THREE.Mesh(
+        new THREE.BoxGeometry(0.09, 0.01, 0.3),
+        pcieMat
+      );
+      finger.position.set(-1.5 + i * 0.1, 0.01, D/2 - 0.15);
+      group.add(finger);
+    }
+
+    // ─── PCIe-Bracket-Schraublöcher (kleine Cylinder-Einsätze) ───
+    const screwMat = new THREE.MeshStandardMaterial({ color: 0x303038, metalness: 0.8, roughness: 0.25 });
+    [-L/2 + 0.15, L/2 - 0.15].forEach(x => {
+      [D/2 - 0.1, -D/2 + 0.1].forEach(z => {
+        const screw = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12),
+          screwMat
+        );
+        screw.position.set(x, 0.08 + H + 0.042, z);
+        group.add(screw);
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DETAIL-LAYER 2 — volle Komponenten-Dichte wie auf echten GPUs
+    // Heatpipes, Fins, RGB, Signage, NVLink, BIOS-Switch, Backplate-Art
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ─── Seitliche Heatsink-Lamellen (links, kurze Seite) ───
+    // Dicht gepackte Kupfer-Finnen, schauen leicht aus dem Shroud heraus
+    const finMat = new THREE.MeshStandardMaterial({
+      color: 0xc89060, metalness: 0.9, roughness: 0.3
+    });
+    for(let i = 0; i < 22; i++){
+      const fin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, H - 0.22, 0.08),
+        finMat
+      );
+      fin.position.set(-L/2 - 0.01, 0.08 + (H - 0.22)/2 + 0.06, -D/2 + 0.2 + i * ((D - 0.4) / 21));
+      group.add(fin);
+    }
+
+    // ─── Heatpipes (4 Kupfer-Rohre — Enden seitlich sichtbar) ───
+    const heatpipeMat = new THREE.MeshStandardMaterial({
+      color: 0xd89a5a, metalness: 0.95, roughness: 0.18,
+      emissive: 0x2a1208, emissiveIntensity: 0.12
+    });
+    [0.22, 0.42, 0.62, 0.80].forEach((yRatio, idx) => {
+      // Pipe-Stück quer (nur an der linken Kante sichtbar als End-Kappen)
+      const pipeCap = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.08, 0.12, 16),
+        heatpipeMat
+      );
+      pipeCap.rotation.z = Math.PI / 2;
+      pipeCap.position.set(-L/2 + 0.03, 0.08 + H * yRatio, -D/2 + 0.4 + idx * 0.55);
+      group.add(pipeCap);
+    });
+
+    // ─── RGB Status-Strip (Front-Oberkante der Shroud, leuchtend) ───
+    const rgbStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(L - 1.8, 0.035, 0.05),
+      new THREE.MeshBasicMaterial({
+        color: 0x4f8ef7, transparent: true, opacity: 0.9,
+        blending: THREE.AdditiveBlending
+      })
+    );
+    rgbStrip.position.set(-0.3, 0.08 + H - 0.018, D/2 - 0.03);
+    group.add(rgbStrip);
+    // RGB-Glow
+    const rgbGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(L - 1.4, 0.08, 0.12),
+      new THREE.MeshBasicMaterial({
+        color: 0x4f8ef7, transparent: true, opacity: 0.22,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      })
+    );
+    rgbGlow.position.copy(rgbStrip.position);
+    group.add(rgbGlow);
+
+    // ─── "GeForce RTX" Schriftzug auf vorderer Shroud-Seite (illuminated) ───
+    const gfFrontTex = makeTextTexture('GeForce  RTX', {
+      color: '#ffffff', font: 'italic 900 76px Arial', width: 1024, height: 128
+    });
+    const gfFrontLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.8, 0.22),
+      new THREE.MeshBasicMaterial({ map: gfFrontTex, transparent: true, opacity: 0.92 })
+    );
+    gfFrontLabel.position.set(-1.3, 0.08 + H * 0.5, D/2 + 0.003);
+    group.add(gfFrontLabel);
+
+    // ─── NVLink-Connector (oben auf Shroud, Gold-Pads unter Abdeckung) ───
+    const nvLinkBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.75, 0.08, 0.16),
+      new THREE.MeshStandardMaterial({ color: 0x08080d, metalness: 0.6, roughness: 0.5 })
+    );
+    nvLinkBase.position.set(-L/2 + 1.35, 0.08 + H + 0.09, -D/2 + 0.12);
+    group.add(nvLinkBase);
+    // Gold-Finger-Kontakte im NVLink
+    const nvPadMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.92, roughness: 0.15 });
+    for(let i = 0; i < 20; i++){
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.01, 0.06), nvPadMat);
+      pad.position.set(-L/2 + 1.35 - 0.33 + i * 0.033, 0.08 + H + 0.131, -D/2 + 0.12);
+      group.add(pad);
+    }
+
+    // ─── Dual-BIOS-Switch (weißer Schiebeschalter auf Shroud-Oberseite) ───
+    const biosBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.025, 0.07),
+      new THREE.MeshStandardMaterial({ color: 0x1c1c22, metalness: 0.5, roughness: 0.5 })
+    );
+    biosBase.position.set(L/2 - 0.55, 0.08 + H + 0.04, -D/2 + 0.15);
+    group.add(biosBase);
+    const biosSlider = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.02, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0xe8e8ee, metalness: 0.7, roughness: 0.3 })
+    );
+    biosSlider.position.set(L/2 - 0.58, 0.08 + H + 0.057, -D/2 + 0.15);
+    group.add(biosSlider);
+
+    // ─── Founders Edition Badge (auf Front-Panel, kreisrund) ───
+    const feBadge = new THREE.Mesh(
+      new THREE.CircleGeometry(0.1, 32),
+      new THREE.MeshStandardMaterial({ color: 0xc8c8d0, metalness: 0.95, roughness: 0.2 })
+    );
+    feBadge.rotation.x = -Math.PI / 2;
+    feBadge.position.set(L/2 - 0.95, 0.08 + H + 0.02, 0.82);
+    group.add(feBadge);
+    const feDot = new THREE.Mesh(
+      new THREE.CircleGeometry(0.04, 16),
+      new THREE.MeshBasicMaterial({ color: 0x76b900 })
+    );
+    feDot.rotation.x = -Math.PI / 2;
+    feDot.position.set(L/2 - 0.95, 0.08 + H + 0.021, 0.82);
+    group.add(feDot);
+
+    // ─── 12VHPWR-Stecker Aufwertung: Plastik-Frame + 4 Sense-Pins ───
+    const pwrFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(1.08, 0.04, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0x070712, metalness: 0.3, roughness: 0.85 })
+    );
+    pwrFrame.position.set(-0.3, 0.08 + H + 0.14, -D/2 + 0.17);
+    group.add(pwrFrame);
+    // Sense-Pins (kleinere Gold-Pins hinter den Haupt-Pins)
+    for(let i = 0; i < 4; i++){
+      const sense = new THREE.Mesh(
+        new THREE.BoxGeometry(0.025, 0.04, 0.025),
+        pinMat
+      );
+      sense.position.set(-0.52 + i * 0.08, 0.08 + H + 0.16, -D/2 + 0.25);
+      group.add(sense);
+    }
+
+    // ─── Bracket-Port-Labels (geätzte weiße Striche neben jedem Port) ───
+    const labelMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+    // HDMI-Label
+    const hdmiLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.02, 0.1), labelMat);
+    hdmiLbl.position.set(L/2 + 0.135, 0.71, -0.65);
+    group.add(hdmiLbl);
+    // DP-Labels × 3
+    for(let i = 0; i < 3; i++){
+      const dp = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.018, 0.055), labelMat);
+      dp.position.set(L/2 + 0.135, 0.48, -0.25 + i * 0.35);
+      group.add(dp);
+    }
+
+    // ─── Power-LED am Bracket (grün, mit Glow) ───
+    const pwrLed = new THREE.Mesh(
+      new THREE.SphereGeometry(0.03, 10, 10),
+      new THREE.MeshBasicMaterial({ color: 0x7aff92 })
+    );
+    pwrLed.position.set(L/2 + 0.14, 0.18, 0.85);
+    group.add(pwrLed);
+    const pwrLedGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 10, 10),
+      new THREE.MeshBasicMaterial({
+        color: 0x7aff92, transparent: true, opacity: 0.3,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      })
+    );
+    pwrLedGlow.position.copy(pwrLed.position);
+    group.add(pwrLedGlow);
+
+    // ─── "GEFORCE RTX" Gravur auf der Backplate-Unterseite ───
+    const gfBackTex = makeTextTexture('GEFORCE  RTX', {
+      color: '#2a2a38', font: 'italic 900 88px Arial', width: 1024, height: 128
+    });
+    const gfBackLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.0, 0.22),
+      new THREE.MeshBasicMaterial({ map: gfBackTex, transparent: true, opacity: 0.82 })
+    );
+    gfBackLabel.rotation.x = Math.PI / 2;
+    gfBackLabel.position.set(0.8, 0.068, 0);
+    group.add(gfBackLabel);
+
+    // ─── Backplate-Ventilations-Cutouts (parallele schwarze Schlitze hinten) ───
+    const ventMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    for(let i = 0; i < 11; i++){
+      const vent = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.008, 0.5),
+        ventMat
+      );
+      vent.position.set(-L/2 + 0.5 + i * 0.13, 0.072, -D/2 + 0.4);
+      group.add(vent);
+    }
+
+    // ─── Hologram-Sticker (silber-iridescent, auf Backplate) ───
+    const holoSticker = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.004, 0.15),
+      new THREE.MeshStandardMaterial({
+        color: 0xd0d0dc, metalness: 0.85, roughness: 0.2,
+        emissive: 0x4f8ef7, emissiveIntensity: 0.25
+      })
+    );
+    holoSticker.position.set(L/2 - 0.95, 0.072, D/2 - 0.35);
+    group.add(holoSticker);
+
+    // ─── Serial-Nummer-Sticker (weißes Rechteck) ───
+    const serialSticker = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.003, 0.1),
+      new THREE.MeshBasicMaterial({ color: 0xf0f0ee })
+    );
+    serialSticker.position.set(-L/2 + 0.75, 0.072, D/2 - 0.32);
+    group.add(serialSticker);
+    // Mini-Barcode-Linien auf dem Sticker
+    for(let i = 0; i < 12; i++){
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.012, 0.001, 0.05),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      bar.position.set(-L/2 + 0.65 + i * 0.02, 0.074, D/2 - 0.32);
+      group.add(bar);
+    }
+
+    // ─── Anti-Sag-Bracket-Hole (Öffnung für Grafikkarten-Stütze) ───
+    const sagHole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 0.08, 16),
+      new THREE.MeshStandardMaterial({ color: 0x000004, metalness: 0.2, roughness: 0.9 })
+    );
+    sagHole.position.set(L/2 - 1.5, 0.08 + H + 0.035, D/2 - 0.15);
+    group.add(sagHole);
+
+    // ─── VRM-Inductor-Chokes (schwarze Würfel mit Kupfer-Top, auf PCB-Rand hinten) ───
+    const chokeMat = new THREE.MeshStandardMaterial({ color: 0x08080c, metalness: 0.4, roughness: 0.6 });
+    const chokeCopMat = new THREE.MeshStandardMaterial({ color: 0xd4944a, metalness: 0.92, roughness: 0.25 });
+    for(let i = 0; i < 7; i++){
+      const choke = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.1, 0.13), chokeMat);
+      choke.position.set(-0.8 + i * 0.28, 0.07, -D/2 + 0.15);
+      group.add(choke);
+      const chokeTop = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.1), chokeCopMat);
+      chokeTop.position.set(-0.8 + i * 0.28, 0.125, -D/2 + 0.15);
+      group.add(chokeTop);
+    }
+
+    // ─── SMD-Kondensatoren (kleine braune Rechtecke, Detail-Layer auf PCB) ───
+    const smdMat = new THREE.MeshStandardMaterial({ color: 0x6b4520, metalness: 0.3, roughness: 0.65 });
+    for(let i = 0; i < 18; i++){
+      const smd = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.035), smdMat);
+      smd.position.set(-1.6 + i * 0.19, 0.06, -D/2 + 0.35);
+      group.add(smd);
+    }
+
+    // ─── PCB-Fan-Header (weißer 4-Pin Stecker) ───
+    const fanHeader = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.035, 0.14),
+      new THREE.MeshStandardMaterial({ color: 0xf2f2ee, metalness: 0.15, roughness: 0.75 })
+    );
+    fanHeader.position.set(2.1, 0.065, -D/2 + 0.5);
+    group.add(fanHeader);
+
+    // ─── Torx-Schrauben auf Backplate (6 Stück, geometrisches Raster) ───
+    const torxMat = new THREE.MeshStandardMaterial({ color: 0x3a3a44, metalness: 0.88, roughness: 0.22 });
+    const torxPos = [
+      [-L/2 + 0.4,  D/2 - 0.25], [-L/2 + 0.4,  -D/2 + 0.25],
+      [ 0,           D/2 - 0.25], [ 0,          -D/2 + 0.25],
+      [ L/2 - 0.4,  D/2 - 0.25], [ L/2 - 0.4,  -D/2 + 0.25]
+    ];
+    torxPos.forEach(([x, z]) => {
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.012, 10), torxMat);
+      t.position.set(x, 0.076, z);
+      group.add(t);
+      // Zentrischer Torx-Stern (dunkler Kern)
+      const core = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.015, 0.014, 6),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0e, metalness: 0.3, roughness: 0.7 })
+      );
+      core.position.set(x, 0.078, z);
+      group.add(core);
+    });
+
+    return group;
+  }
+
+  // ────────────────────────────────────────────────────
+  // TPU Factory — hoch-detaillierter Tensor-Processor mit HBM-Stacks + Capacitors
+  // ────────────────────────────────────────────────────
+  function buildTPU(){
+    const group = new THREE.Group();
+    group.userData.type = 'tpu';
+
+    // Substrat (größer — gibt Raum für HBM + Caps)
+    const substrate = new THREE.Mesh(
+      new THREE.BoxGeometry(4.2, 0.1, 4.2),
+      new THREE.MeshStandardMaterial({ color: 0x12121c, metalness: 0.4, roughness: 0.65 })
+    );
+    group.add(substrate);
+
+    // Orientierungs-Marker (pin-1 Dot in einer Ecke)
+    const pinOneMarker = new THREE.Mesh(
+      new THREE.CircleGeometry(0.06, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })
+    );
+    pinOneMarker.rotation.x = -Math.PI / 2;
+    pinOneMarker.position.set(-1.95, 0.052, -1.95);
+    group.add(pinOneMarker);
+
+    // Fiducial-Marker an den 3 anderen Ecken (kleine weiße Quadrate)
+    const fidMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+    [[-1.95, 1.95], [1.95, -1.95], [1.95, 1.95]].forEach(([x, z]) => {
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.002, 0.08), fidMat);
+      f.position.set(x, 0.052, z);
+      group.add(f);
+    });
+
+    // Silk-Screen Signal-Traces auf Substrat (dekorative dünne Linien)
+    const traceMat = new THREE.MeshBasicMaterial({ color: 0x4f8ef7, transparent: true, opacity: 0.3 });
+    for(let i = 0; i < 16; i++){
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.6 + Math.random() * 0.8, 0.001, 0.015), traceMat);
+      t.position.set((Math.random() - 0.5) * 3.8, 0.053, (Math.random() - 0.5) * 3.8);
+      t.rotation.y = Math.random() * Math.PI;
+      group.add(t);
+    }
+
+    // Haupt-Package (TPU-Die, quadratisch)
+    const pkg = new THREE.Mesh(
+      new THREE.BoxGeometry(2.3, 0.16, 2.3),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a28, metalness: 0.6, roughness: 0.4 })
+    );
+    pkg.position.y = 0.13;
+    group.add(pkg);
+
+    // Heatspreader auf der TPU
+    const spreader = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 0.04, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0xbbbbc5, metalness: 0.95, roughness: 0.18 })
+    );
+    spreader.position.y = 0.23;
+    group.add(spreader);
+
+    // "TPU v5" Gravur auf dem Heatspreader (dunkle Schrift)
+    const tpuTex = makeTextTexture('TPU v5', { color: '#1a1a28', font: 'bold 88px Arial', width: 512, height: 128 });
+    const tpuLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.9, 0.22),
+      new THREE.MeshBasicMaterial({ map: tpuTex, transparent: true, opacity: 0.85 })
+    );
+    tpuLabel.rotation.x = -Math.PI / 2;
+    tpuLabel.position.set(0, 0.251, 0.65);
+    group.add(tpuLabel);
+
+    // Google-Wordmark (klein, unter TPU-Label)
+    const googleTex = makeTextTexture('Google', { color: '#555560', font: 'italic bold 48px Arial', width: 512, height: 96 });
+    const googleLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.11),
+      new THREE.MeshBasicMaterial({ map: googleTex, transparent: true, opacity: 0.7 })
+    );
+    googleLabel.rotation.x = -Math.PI / 2;
+    googleLabel.position.set(0, 0.251, 0.85);
+    group.add(googleLabel);
+
+    // Systolic-Array — 16×16 mit Cluster-Struktur (4×4 Gruppen)
+    const cellGeo = new THREE.BoxGeometry(0.08, 0.015, 0.08);
+    const cellCount = 16;
+    const arraySize = 1.5;
+    const cellStep = arraySize / cellCount;
+    const clusterDivMat = new THREE.MeshBasicMaterial({ color: 0x333344, transparent: true, opacity: 0.6 });
+    for(let i = 0; i < cellCount; i++){
+      for(let j = 0; j < cellCount; j++){
+        const distToCenter = Math.hypot(i - cellCount/2 + 0.5, j - cellCount/2 + 0.5) / (cellCount/2);
+        const active = Math.random() < 0.45;
+        const baseOpacity = active ? 0.9 - distToCenter * 0.25 : 0.2;
+        const cell = new THREE.Mesh(cellGeo, new THREE.MeshBasicMaterial({
+          color: active ? 0x4f8ef7 : 0x2a2a3a,
+          transparent: true, opacity: baseOpacity
+        }));
+        cell.position.set(
+          -arraySize/2 + i * cellStep + cellStep/2,
+          0.257,
+          -arraySize/2 + j * cellStep + cellStep/2
+        );
+        cell.userData.active = active;
+        cell.userData.basePhase = Math.random() * Math.PI * 2;
+        group.add(cell);
+      }
+    }
+
+    // Cluster-Divider (feine Linien zwischen jedem 4×4-Block)
+    for(let c = 1; c < 4; c++){
+      // Vertikale Divider
+      const vDiv = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.001, arraySize), clusterDivMat);
+      vDiv.position.set(-arraySize/2 + c * (arraySize/4), 0.262, 0);
+      group.add(vDiv);
+      // Horizontale Divider
+      const hDiv = new THREE.Mesh(new THREE.BoxGeometry(arraySize, 0.001, 0.01), clusterDivMat);
+      hDiv.position.set(0, 0.262, -arraySize/2 + c * (arraySize/4));
+      group.add(hDiv);
+    }
+
+    // Rahmen um das Systolic-Array (wireframe-blau)
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(arraySize + 0.05, 0.003, arraySize + 0.05),
+      new THREE.MeshBasicMaterial({ color: 0x4f8ef7, wireframe: true, transparent: true, opacity: 0.5 })
+    );
+    frame.position.y = 0.263;
+    group.add(frame);
+
+    // ───────── HBM-Memory-Stacks (4 Stück, 2 pro Seite links/rechts) ─────────
+    function makeHBM(x, z){
+      const hbmGroup = new THREE.Group();
+      // Base-Interposer (dunkler Sockel)
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(0.75, 0.04, 1.2),
+        new THREE.MeshStandardMaterial({ color: 0x0f0f15, metalness: 0.5, roughness: 0.5 })
+      );
+      base.position.y = 0.075;
+      hbmGroup.add(base);
+      // 4 gestapelte Memory-Dies (HBM = High Bandwidth Memory = mehrere Lagen)
+      for(let i = 0; i < 4; i++){
+        const die = new THREE.Mesh(
+          new THREE.BoxGeometry(0.7, 0.05, 1.15),
+          new THREE.MeshStandardMaterial({
+            color: i === 3 ? 0x282835 : 0x1e1e28,
+            metalness: 0.55, roughness: 0.4
+          })
+        );
+        die.position.y = 0.11 + i * 0.055;
+        hbmGroup.add(die);
+        // Subtile Edge-Glow-Linie zwischen Layers (zeigt Layered-Chip-Struktur)
+        const edgeLine = new THREE.Mesh(
+          new THREE.BoxGeometry(0.72, 0.003, 1.17),
+          new THREE.MeshBasicMaterial({ color: 0x4f8ef7, transparent: true, opacity: 0.25 })
+        );
+        edgeLine.position.y = 0.085 + i * 0.055;
+        hbmGroup.add(edgeLine);
+      }
+      // Top-Marking
+      const hbmLabel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.002, 0.1),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 })
+      );
+      hbmLabel.position.y = 0.33;
+      hbmGroup.add(hbmLabel);
+
+      hbmGroup.position.set(x, 0, z);
+      return hbmGroup;
+    }
+    group.add(
+      makeHBM(-1.55, -0.7),
+      makeHBM(-1.55, 0.7),
+      makeHBM(1.55, -0.7),
+      makeHBM(1.55, 0.7)
+    );
+
+    // ───────── Interposer-Traces zwischen HBM und TPU-Die (glowing blaue Linien) ─────────
+    const interposerMat = new THREE.MeshBasicMaterial({ color: 0x4f8ef7, transparent: true, opacity: 0.55 });
+    // Horizontal vom linken HBM-Paar zur TPU
+    for(let i = 0; i < 8; i++){
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.002, 0.015), interposerMat);
+      line.position.set(-1.13, 0.213, -0.8 + i * 0.22);
+      group.add(line);
+    }
+    // Horizontal vom rechten HBM-Paar zur TPU
+    for(let i = 0; i < 8; i++){
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.002, 0.015), interposerMat);
+      line.position.set(1.13, 0.213, -0.8 + i * 0.22);
+      group.add(line);
+    }
+
+    // ───────── Capacitors (kleine Cylinder rund um das TPU-Package) ─────────
+    const capMat = new THREE.MeshStandardMaterial({ color: 0x1a1a28, metalness: 0.45, roughness: 0.55 });
+    const capTopMat = new THREE.MeshStandardMaterial({ color: 0x8b6b32, metalness: 0.6, roughness: 0.4 });
+    function addCap(x, z){
+      const cap = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.065, 0.14, 10),
+        capMat
+      );
+      cap.position.set(x, 0.12, z);
+      group.add(cap);
+      // Top-Cap (anderes Material)
+      const top = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.055, 0.02, 10),
+        capTopMat
+      );
+      top.position.set(x, 0.2, z);
+      group.add(top);
+    }
+    // Caps in 2 Reihen am oberen und unteren Rand des Substrats
+    for(let i = 0; i < 10; i++){
+      addCap(-1.8 + i * 0.4, -1.7);
+      addCap(-1.8 + i * 0.4, 1.7);
+    }
+    // Ein paar Caps auch seitlich zwischen HBMs (auf den "leeren" Bereichen)
+    [[-1.55, 0], [1.55, 0]].forEach(([x, z]) => {
+      addCap(x - 0.2, z);
+      addCap(x + 0.2, z);
+    });
+
+    // ───────── Decoupling-Caps als kleine Rechtecke (wie 0402-Bauform) ─────────
+    const decapMat = new THREE.MeshStandardMaterial({ color: 0x505058, metalness: 0.5, roughness: 0.4 });
+    for(let i = 0; i < 18; i++){
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.04), decapMat);
+      // Positioniert im "Moat" zwischen TPU-Package und Substrat-Rand
+      const side = Math.floor(Math.random() * 4);
+      const offset = (Math.random() - 0.5) * 2.6;
+      if(side === 0) d.position.set(-1.8, 0.08, offset);
+      else if(side === 1) d.position.set(1.8, 0.08, offset);
+      else if(side === 2) d.position.set(offset, 0.08, -1.8);
+      else d.position.set(offset, 0.08, 1.8);
+      if(Math.random() < 0.5) d.rotation.y = Math.PI / 2;
+      group.add(d);
+    }
+
+    // ───────── Ball-Grid-Array auf der Unterseite (größer, dichter) ─────────
+    const ballMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.2 });
+    const ballGeo = new THREE.SphereGeometry(0.04, 8, 8);
+    const ballCount = 14;
+    const ballStep = 3.6 / ballCount;
+    for(let i = 0; i < ballCount; i++){
+      for(let j = 0; j < ballCount; j++){
+        const b = new THREE.Mesh(ballGeo, ballMat);
+        b.position.set(
+          -1.8 + i * ballStep + ballStep/2,
+          -0.06,
+          -1.8 + j * ballStep + ballStep/2
+        );
+        group.add(b);
+      }
+    }
+
+    return group;
+  }
+
+  // ────────────────────────────────────────────────────
+  // Scene-Setup-Helper — Maus-Drag-Steuerung statt Auto-Rotation
+  // ────────────────────────────────────────────────────
+  function mountScene(mountId, object, cameraDist = 6.5, initialRotation = {x: 0.12, y: -0.6}){
+    const mount = document.getElementById(mountId);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    camera.position.set(cameraDist * 0.7, cameraDist * 0.45, cameraDist * 0.85);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const resize = () => {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    };
+    mount.appendChild(renderer.domElement);
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Licht-Setup
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const key = new THREE.DirectionalLight(0xaac7ff, 0.9);
+    key.position.set(5, 8, 4);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffd4a0, 0.3);
+    fill.position.set(-4, 2, -3);
+    scene.add(fill);
+    const rim = new THREE.DirectionalLight(0x4f8ef7, 0.6);
+    rim.position.set(0, -3, -5);
+    scene.add(rim);
+
+    scene.add(object);
+
+    // Start-Orientierung — 3/4-Ansicht von oben
+    object.rotation.x = initialRotation.x;
+    object.rotation.y = initialRotation.y;
+
+    // Maus-Drag-Steuerung
+    let isDragging = false;
+    let lastX = 0, lastY = 0;
+    mount.style.cursor = 'grab';
+    mount.style.pointerEvents = 'auto';
+    mount.style.touchAction = 'none';
+
+    mount.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      mount.style.cursor = 'grabbing';
+      mount.setPointerCapture(e.pointerId);
+    });
+    mount.addEventListener('pointermove', (e) => {
+      if(!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      object.rotation.y += dx * 0.008;
+      object.rotation.x += dy * 0.006;
+      // Clamp x-Rotation damit man nicht komplett überkopf geht
+      object.rotation.x = Math.max(-Math.PI/2 + 0.15, Math.min(Math.PI/2 - 0.15, object.rotation.x));
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+    const stopDrag = (e) => {
+      if(!isDragging) return;
+      isDragging = false;
+      mount.style.cursor = 'grab';
+      try{ mount.releasePointerCapture(e.pointerId); }catch(_){}
+    };
+    mount.addEventListener('pointerup', stopDrag);
+    mount.addEventListener('pointercancel', stopDrag);
+
+    // Render-Loop: GPU-Lüfter drehen, TPU-Zellen pulsieren (beides unabhängig vom User-Drag)
+    function frame(now){
+      object.traverse(child => {
+        // GPU: Fan-Rotoren drehen
+        if(child.userData && child.userData.isFanRotor){
+          child.rotation.y += child.userData.spinSpeed;
+        }
+        // TPU: Systolic-Array-Zellen pulsieren
+        if(child.userData && child.userData.active && child.material){
+          const pulse = Math.sin(now * 0.004 + child.userData.basePhase) * 0.3 + 0.7;
+          child.material.opacity = 0.85 * pulse;
+        }
+      });
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // Start — GPU bekommt einen schöneren Default-Winkel (oben leicht gekippt, 3-Lüfter sichtbar)
+  mountScene('gpuCanvas', buildGPU(), 7.5, { x: 0.45, y: -0.55 });
+  mountScene('tpuCanvas', buildTPU(), 6, { x: 0.5, y: -0.65 });
+</script>
+
+</body>
+</html>

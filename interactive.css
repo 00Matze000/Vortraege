@@ -1,0 +1,322 @@
+/* ═══════════════════════════════════════════════════════════════
+   INTERACTIVE LAYER — builds on base styles in main file
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────── BOOT SCREEN ─────────────── */
+.boot{
+  position:fixed;inset:0;z-index:100;background:#000;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-mono);color:var(--ink-dim);font-size:13px;
+  transition:opacity .8s cubic-bezier(.2,.8,.2,1),visibility .8s;
+}
+.boot.done{opacity:0;visibility:hidden;pointer-events:none}
+.boot__inner{
+  width:min(560px,90vw);padding:32px;
+  border:1px solid var(--line-2);background:#050506;border-radius:4px;
+  position:relative;overflow:hidden;
+}
+.boot__inner::before{
+  content:"";position:absolute;inset:-1px;border-radius:4px;
+  background:linear-gradient(120deg,transparent 30%,rgba(79,142,247,.25),transparent 70%);
+  background-size:300% 100%;animation:bootSheen 2.4s ease-in-out infinite;
+  pointer-events:none;mix-blend-mode:overlay;
+}
+@keyframes bootSheen{0%{background-position:-100% 0}100%{background-position:200% 0}}
+.boot__head{
+  display:flex;align-items:center;gap:10px;margin-bottom:18px;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute);
+}
+.boot__head::before{
+  content:"";width:8px;height:8px;border-radius:50%;background:var(--blue);
+  box-shadow:0 0 10px var(--blue-glow);animation:bootPulse 1.2s ease-in-out infinite;
+}
+@keyframes bootPulse{0%,100%{opacity:.4}50%{opacity:1}}
+.boot__line{display:flex;gap:10px;line-height:1.8;opacity:0;animation:bootIn .3s forwards}
+.boot__line .t{color:var(--ink-mute);min-width:70px}
+.boot__line .m{color:var(--ink-dim);flex:1}
+.boot__line .s{color:var(--blue);font-weight:500}
+.boot__line .s--ok{color:var(--green)}
+.boot__line--faded{opacity:.4}
+@keyframes bootIn{to{opacity:1}}
+.boot__progress{
+  margin-top:16px;height:2px;background:rgba(255,255,255,.08);border-radius:1px;overflow:hidden;
+}
+.boot__progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),#8bb4ff);box-shadow:0 0 8px var(--blue-glow);transition:width .1s linear}
+.boot__foot{margin-top:12px;display:flex;justify-content:space-between;font-size:10px;letter-spacing:.1em;color:var(--ink-mute)}
+
+/* ─────────────── HERO TOKEN RAIN ─────────────── */
+.token-canvas{
+  position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;
+  opacity:.8;
+}
+#s1 > *:not(.token-canvas):not(.hero__orbit){position:relative;z-index:2}
+#s1 .hero__orbit{position:absolute;z-index:1}
+
+/* ─────────────── STARFIELD (lebendiger Hintergrund) ─────────────── */
+.starfield-bg{
+  position:fixed;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;opacity:.75;
+}
+
+
+/* ─────────────── PARALLAX LAYERS ─────────────── */
+.parallax-bg{
+  position:fixed;inset:-80px;pointer-events:none;z-index:0;
+  will-change:transform;overflow:hidden;
+}
+.parallax-bg svg{
+  position:absolute;width:calc(100% + 80px);height:calc(100% + 80px);
+  top:-40px;left:-40px;
+  opacity:.065;
+  animation:gridDrift 70s linear infinite;
+  will-change:transform;
+}
+@keyframes gridDrift{
+  0%   {transform:translate(0,0)}
+  100% {transform:translate(80px,80px)}
+}
+
+/* ─────────────── TIMELINE SCRUB ─────────────── */
+.timeline{position:relative}
+.tl-marker{
+  position:absolute;left:calc(60px - 1px);width:3px;height:18px;
+  background:var(--blue);box-shadow:0 0 12px var(--blue-glow);
+  top:0;border-radius:2px;pointer-events:none;
+  transition:top .2s cubic-bezier(.2,.8,.2,1);z-index:5;
+}
+@media (max-width:960px){.tl-marker{left:calc(40px - 1px)}}
+.tl-year,.tl-card{transition:color .4s,opacity .4s}
+.tl-row.past .tl-year{color:var(--ink-mute)}
+.tl-row.past .tl-card{opacity:.5}
+.tl-row.active .tl-year{color:var(--blue);font-weight:500}
+.tl-row.active .tl-card::before{background:var(--blue);box-shadow:0 0 8px var(--blue-glow)}
+
+/* ─────────────── ARCHITECTURE PACKETS ─────────────── */
+.arch-conn{cursor:default}
+.arch-conn svg{overflow:visible}
+.arch-packet{
+  fill:var(--blue);filter:drop-shadow(0 0 6px var(--blue-glow));
+  opacity:0;
+}
+.arch-backend{cursor:pointer;user-select:none}
+.arch-backend.selected{
+  border-color:var(--blue)!important;background:rgba(79,142,247,.08)!important;
+  box-shadow:0 0 0 1px var(--blue),0 12px 40px -20px var(--blue-glow);
+}
+.arch-backend__badge{transition:all .3s}
+.arch-backend:not(.selected) .arch-backend__badge{opacity:0;transform:translateY(-4px)}
+
+/* ─────────────── CODE BACKEND SWITCHER ─────────────── */
+.code-tabs{
+  display:flex;gap:0;margin-bottom:-1px;position:relative;z-index:2;
+}
+.code-tab-btn{
+  all:unset;cursor:pointer;padding:11px 22px;
+  font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;color:var(--ink-mute);
+  border:1px solid var(--line);border-bottom:none;border-radius:6px 6px 0 0;
+  background:#050607;transition:all .25s;position:relative;
+  display:flex;align-items:center;gap:8px;
+}
+.code-tab-btn::before{
+  content:"";width:8px;height:8px;border-radius:50%;
+  background:var(--_c,var(--ink-mute));transition:box-shadow .3s;
+}
+.code-tab-btn[data-backend="jax"]{--_c:#4f8ef7}
+.code-tab-btn[data-backend="tensorflow"]{--_c:#f5b84a}
+.code-tab-btn[data-backend="torch"]{--_c:#ff5a5f}
+.code-tab-btn:hover{color:var(--ink)}
+.code-tab-btn[aria-selected="true"]{
+  color:var(--ink);background:#08090c;border-color:rgba(79,142,247,.3);
+}
+.code-tab-btn[aria-selected="true"]::before{
+  box-shadow:0 0 10px var(--_c);
+}
+.code-card{transition:border-color .3s}
+.code-env-line{
+  padding:12px 24px;border-bottom:1px solid var(--line);background:#06070a;
+  font-family:var(--f-mono);font-size:14px;color:var(--ink-dim);
+  display:flex;align-items:center;gap:10px;
+}
+.code-env-line::before{content:"$";color:var(--blue);font-weight:700}
+.code-env-val{color:var(--blue);transition:all .3s}
+.code-env-val::before{content:'"'}
+.code-env-val::after{content:'"'}
+.code-swap{animation:codeSwap .5s ease-out}
+@keyframes codeSwap{
+  0%{opacity:0;transform:translateY(-2px)}
+  100%{opacity:1;transform:none}
+}
+
+/* ─────────────── JAX PLAYGROUNDS ─────────────── */
+.transform{
+  position:relative;cursor:pointer;transition:background .4s,border-color .4s;
+}
+.transform.active{background:#06080d}
+.transform__playground{
+  margin-top:14px;min-height:80px;position:relative;
+  border-top:1px dashed var(--line);padding-top:14px;
+}
+
+/* jit playground */
+.pg-jit{
+  display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px;
+}
+.pg-jit__stage{
+  flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:3px;
+  text-align:center;color:var(--ink-mute);transition:all .4s;
+  background:rgba(255,255,255,.02);
+}
+.pg-jit__stage.on{border-color:var(--blue);color:var(--blue);background:var(--blue-soft)}
+.pg-jit__arrow{color:var(--ink-mute);font-size:12px}
+.pg-jit__btn{
+  all:unset;cursor:pointer;margin-top:12px;width:100%;text-align:center;
+  padding:8px;border:1px solid var(--line-2);border-radius:3px;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-dim);transition:all .25s;
+}
+.pg-jit__btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-soft)}
+
+/* grad playground */
+.pg-grad{position:relative;height:80px}
+.pg-grad svg{width:100%;height:100%;overflow:visible;cursor:ew-resize}
+.pg-grad__val{
+  position:absolute;top:0;right:0;font-family:var(--f-mono);font-size:12px;color:var(--blue);
+}
+
+/* vmap playground */
+.pg-vmap__viz{
+  display:flex;gap:3px;height:30px;align-items:center;margin-bottom:10px;flex-wrap:wrap;
+}
+.pg-vmap__cell{width:10px;height:18px;background:var(--blue);border-radius:2px;opacity:.7;transition:all .3s}
+.pg-vmap__slider{
+  width:100%;-webkit-appearance:none;appearance:none;height:2px;background:var(--line-2);
+  border-radius:1px;outline:none;cursor:pointer;
+}
+.pg-vmap__slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 8px var(--blue-glow)}
+.pg-vmap__slider::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--blue);cursor:pointer;border:none;box-shadow:0 0 8px var(--blue-glow)}
+.pg-vmap__lbl{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);margin-top:8px}
+.pg-vmap__lbl b{color:var(--blue);font-weight:500}
+
+/* pmap playground */
+.pg-pmap{display:flex;flex-direction:column;gap:8px}
+.pg-pmap__devices{display:flex;gap:6px;justify-content:center;min-height:34px;align-items:center}
+.pg-pmap__device{
+  flex:1;max-width:40px;height:30px;border:1px solid var(--line-2);
+  border-radius:3px;position:relative;overflow:hidden;
+  transition:all .3s cubic-bezier(.2,.8,.2,1);
+}
+.pg-pmap__device::before{
+  content:"";position:absolute;inset:2px;
+  background:linear-gradient(180deg,var(--blue-soft),transparent);
+}
+.pg-pmap__device::after{
+  content:"";position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  width:60%;height:2px;background:var(--blue);box-shadow:0 0 6px var(--blue-glow);
+  animation:pmapBlink 1.5s ease-in-out infinite;
+}
+@keyframes pmapBlink{0%,100%{opacity:.4}50%{opacity:1}}
+.pg-pmap__btn{
+  all:unset;cursor:pointer;padding:8px;text-align:center;
+  border:1px solid var(--line-2);border-radius:3px;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-dim);transition:all .25s;
+}
+.pg-pmap__btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ─────────────── PINN PULSING ISO-LINES ─────────────── */
+.usecase__visual .iso{
+  stroke-dasharray:4 4;
+  animation:isoFlow 6s linear infinite;
+}
+.usecase__visual .iso:nth-child(2){animation-duration:7s;animation-direction:reverse}
+.usecase__visual .iso:nth-child(3){animation-duration:8s;animation-delay:-2s}
+@keyframes isoFlow{
+  to{stroke-dashoffset:-80}
+}
+.usecase__visual .heatmap{
+  animation:heatPulse 5s ease-in-out infinite;
+}
+@keyframes heatPulse{
+  0%,100%{opacity:.85;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.03)}
+}
+.pinn-sample{
+  animation:sampleBlink 2s ease-in-out infinite;
+}
+.pinn-sample:nth-child(2){animation-delay:.3s}
+.pinn-sample:nth-child(3){animation-delay:.6s}
+.pinn-sample:nth-child(4){animation-delay:.9s}
+.pinn-sample:nth-child(5){animation-delay:1.2s}
+@keyframes sampleBlink{
+  0%,100%{opacity:.6;r:2}
+  50%{opacity:1;r:3.5}
+}
+
+/* ─────────────── PERFORMANCE INTERACTIVE BARS ─────────────── */
+.bar{cursor:default;transition:transform .3s,opacity .3s}
+.bar__track{position:relative;transition:height .3s}
+.bar:hover{transform:translateX(2px)}
+.bar:hover .bar__track{height:18px}
+.bar__fill{position:relative}
+.bar__detail{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);
+  font-family:var(--f-mono);font-size:10px;color:var(--ink-mute);
+  opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;
+  display:flex;gap:12px;
+}
+.bar:hover .bar__detail{opacity:1}
+.bar__detail b{color:var(--ink);font-weight:500}
+
+/* glitching title */
+.glitch-letter{
+  display:inline-block;position:relative;
+}
+.glitch-letter.glitching{
+  animation:glitchJitter .12s steps(2) 3;
+}
+@keyframes glitchJitter{
+  0%{transform:translate(0,0)}
+  25%{transform:translate(1px,-1px);color:#ff5a5f}
+  50%{transform:translate(-1px,1px);color:#4f8ef7}
+  75%{transform:translate(1px,1px);color:#f5b84a}
+  100%{transform:translate(0,0)}
+}
+
+/* ─────────────── HERO REFINEMENTS ─────────────── */
+.hero__orbit .satellite{cursor:pointer;transition:filter .3s}
+.hero__orbit:hover .satellite{filter:brightness(1.2)}
+
+/* ─────────────── FAZIT HOVER ─────────────── */
+.fazit__card{cursor:default;transition:transform .5s,border-color .5s}
+.fazit__card:hover{transform:translateY(-4px);border-color:rgba(79,142,247,.4)}
+.fazit__card::after{
+  content:"";position:absolute;right:0;top:0;width:0;height:2px;background:var(--blue);
+  transition:width .6s cubic-bezier(.2,.8,.2,1);
+}
+.fazit__card:hover::after{width:100%}
+
+/* ─────────────── CURSOR STATES FOR CLICKABLES ─────────────── */
+.nav button,.code-tab-btn,.pg-jit__btn,.pg-pmap__btn,.arch-backend,.transform{cursor:pointer}
+
+/* ─────────────── CUSTOM CURSOR (blue dot, only when moving) ─────────────── */
+*{cursor:none!important}
+.custom-cursor{
+  position:fixed;top:0;left:0;width:14px;height:14px;
+  background:var(--blue);border-radius:50%;
+  pointer-events:none;z-index:99999;
+  transform:translate3d(-100px,-100px,0);
+  opacity:0;transition:opacity 280ms ease;
+  box-shadow:0 0 14px rgba(79,142,247,.55), 0 0 32px rgba(79,142,247,.25);
+  will-change:transform,opacity;
+}
+.custom-cursor.is-moving{opacity:1}
+
+/* ─────────────── REDUCED MOTION ─────────────── */
+@media (prefers-reduced-motion:reduce){
+  .token-canvas{display:none}
+  .usecase__visual .iso,.usecase__visual .heatmap,.pinn-sample,
+  .pg-pmap__device::after,.boot__head::before,.boot__inner::before{animation:none!important}
+  .parallax-bg{display:none}
+  *{cursor:auto!important}
+  .custom-cursor{display:none}
+}
