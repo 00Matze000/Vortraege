@@ -1,0 +1,596 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zustandslos skalieren — Keras zu Flax</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+</head>
+<body>
+
+<!-- ============ BOOT SCREEN ============ -->
+<div class="boot" id="boot">
+  <div class="boot__inner">
+    <div class="boot__head"><span class="boot__dot"></span>Zustandslos skalieren · Boot-Sequenz</div>
+    <div class="boot__lines" id="bootLines"></div>
+    <div class="boot__progress"><div class="boot__progress-bar" id="bootBar"></div></div>
+    <div class="boot__foot"><span>jax · flax · pure functions</span><span>vortrag · mai 2026</span></div>
+  </div>
+</div>
+
+<div class="cursor" id="cursor" aria-hidden="true"></div>
+
+<canvas id="bgFx" aria-hidden="true"></canvas>
+
+<div id="bgBlobs" aria-hidden="true">
+  <div class="blob b1" data-speed="0.18"></div>
+  <div class="blob b2" data-speed="0.32"></div>
+  <div class="blob b3" data-speed="0.22"></div>
+  <div class="blob b4" data-speed="0.40"></div>
+  <div class="blob b5" data-speed="0.26"></div>
+  <div class="blob b6" data-speed="0.34"></div>
+  <div class="blob b7" data-speed="0.20"></div>
+  <div class="blob b8" data-speed="0.38"></div>
+</div>
+
+<div id="bgDrift" aria-hidden="true">
+  <span class="gly" data-speed="0.55" style="top:18%;  left: 4%;  font-size: 240px;">ƒ</span>
+  <span class="gly" data-speed="0.70" style="top:78%;  right: 6%; font-size: 200px; font-style: italic;">∂</span>
+  <span class="gly" data-speed="0.45" style="top:140%; left:48%; font-size: 280px;">⚇</span>
+  <span class="gly" data-speed="0.62" style="top:210%; left: 8%; font-size: 220px; font-style: italic;">θ</span>
+  <span class="gly" data-speed="0.50" style="top:265%; right:10%; font-size: 260px;">∑</span>
+  <div class="ring" data-speed="0.30" style="top:30%;  right:10%; width:180px;height:180px;"></div>
+  <div class="ring" data-speed="0.65" style="top:120%; left: 8%; width:120px;height:120px;"></div>
+  <div class="ring" data-speed="0.50" style="top:230%; right:18%; width:240px;height:240px;"></div>
+  <div class="square" data-speed="0.55" style="top:90%;  left:14%; width:90px;height:90px; transform: rotate(45deg);"></div>
+  <div class="square" data-speed="0.42" style="top:185%; right: 8%; width:140px;height:140px; transform: rotate(20deg);"></div>
+  <div class="square" data-speed="0.60" style="top:280%; left:30%; width:70px;height:70px;  transform: rotate(15deg);"></div>
+  <div class="dot" data-speed="0.85" style="top:55%;  left:12%; width:10px;height:10px;"></div>
+  <div class="dot" data-speed="0.95" style="top:115%; right:18%; width:8px;height:8px;"></div>
+  <div class="dot" data-speed="0.75" style="top:175%; left:52%; width:12px;height:12px;"></div>
+  <div class="dot" data-speed="0.90" style="top:240%; right:32%; width:6px;height:6px;"></div>
+</div>
+
+<div class="progress" id="progress"></div>
+
+<nav class="dotnav" aria-label="Section navigation">
+  <button class="dot" data-target="s1" data-label="Hook"></button>
+  <button class="dot" data-target="s2" data-label="Pure Functions"></button>
+  <button class="dot" data-target="s3" data-label="PRNG"></button>
+  <button class="dot" data-target="sdet" data-label="Determinismus"></button>
+  <button class="dot" data-target="s4" data-label="init / apply"></button>
+  <!-- <button class="dot" data-target="s5" data-label="Beispiel"></button> -->
+  <button class="dot" data-target="s6" data-label="Take-Aways"></button>
+  <button class="dot" data-target="s7" data-label="Quellen"></button>
+</nav>
+
+<!-- ============ SECTION 1: HERO ============ -->
+<section id="s1" class="section">
+  <div class="mesh"></div>
+  <div class="grid-bg"></div>
+  <div class="hero-shape s1"></div>
+  <div class="hero-shape s2"></div>
+  <div class="hero-shape s3"></div>
+  <div class="hero-shape s4"></div>
+  <span class="section-num">01 / Vortrag · 5 Minuten</span>
+  <div class="ticker"><div class="ticker-track">
+    <span>// JAX</span><span>// Flax</span><span>// pure functions</span><span>// PRNGKey</span><span>// init() · apply()</span><span>// stateless</span><span>// XLA</span><span>// jax.grad</span><span>// jit</span><span>// vmap</span><span>// pmap</span><span>// optax</span><span>// JAX</span><span>// Flax</span><span>// pure functions</span><span>// PRNGKey</span><span>// init() · apply()</span><span>// stateless</span>
+  </div></div>
+  <div class="hero-wrap">
+    <div class="eyebrow reveal">Darf ein neuronales Netz seine eigenen Gewichte vergessen?<span class="blink"></span></div>
+    <h1 class="hero-title reveal">Zustandslos<br/><em>skalieren.</em></h1>
+    <p class="hero-sub reveal">Warum erzwingt JAX <strong>absolute Zustandslosigkeit</strong> und opfert dafür den klassischen Zufall?<br/>Wie ermöglicht Flax Deep Learning, wenn Modelle eigentlich <strong>keine internen Gewichte</strong> speichern dürfen?</p>
+    <div class="hero-meta reveal">
+      <span>Vortragender<strong>Max</strong></span>
+      <span>Lightning Talk<strong>JAX · Flax · Pure Functions</strong></span>
+      <span>Vortrag<strong>Mai 2026</strong></span>
+      <span>Dauer<strong>≈ 5 Minuten</strong></span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2: PURE FUNCTIONS ============ -->
+<section id="s2" class="section">
+  <span class="section-num">02 / Grundlage</span>
+  <div class="s2-grid">
+    <div class="reveal">
+      <div class="h-eyebrow">Definition</div>
+    </div>
+    <h2 class="section-title reveal">Was ist eine <em>Pure Function?</em></h2>
+    <p class="section-lead reveal">Ganz einfach: gleicher Input, <strong style="color:var(--ink);font-weight:600;">immer</strong> gleicher Output. Keine Side Effects, kein Gedächtnis. Das einzige was sie tut: <em>einen Wert zurückgeben</em>.</p>
+
+    <div class="compare reveal">
+      <div class="compare-card bad">
+        <span class="tag">⚠ Imperativ · OOP-Stil</span>
+        <h3>Keras: Gewichte leben im Objekt</h3>
+        <p>Das Modell <em>besitzt</em> seine Gewichte. Jeder Trainings-Schritt manipuliert sie still im Hintergrund.</p>
+        <div class="obj-vis">
+          <span class="warn" title="Side effect">!</span>
+          <span class="label">model</span>
+          ├── architecture<br/>
+          ├── weights ← <span style="color:var(--crimson);">mutates</span><br/>
+          └── optimizer.state ← <span style="color:var(--crimson);">mutates</span>
+        </div>
+      </div>
+      <div class="compare-card good">
+        <span class="tag">✓ Funktional · JAX-Stil</span>
+        <h3>JAX: Input rein, Output raus</h3>
+        <p>Gewichte sind ein <em>Argument</em>: <code style="font-family:var(--t-mono);font-size:12px;color:var(--indigo);">f(params, x) → y</code>. Reine Funktion = vom XLA-Compiler <em>tracebar</em> = JIT-kompilierbar auf 1000 GPUs.</p>
+        <div class="pure-vis">
+          <span class="pill">params, x</span>
+          <span class="arrow"></span>
+          <span class="box">f</span>
+          <span class="arrow"></span>
+          <span class="pill" style="background:var(--indigo);color:var(--paper);border-color:var(--indigo);">new_params, y</span>
+        </div>
+      </div>
+    </div>
+
+    <blockquote class="quote reveal">
+      <p>„Eine Pure Function ist wie ein Rezept: gleiche Zutaten, immer gleicher Kuchen — der Koch hat <em>kein Gedächtnis.</em>"</p>
+      <cite>— Funktionale Programmierung, kurz erklärt</cite>
+    </blockquote>
+
+    <!-- Code-Snippet temporär ausgeblendet (kein Sprechtext)
+    <div class="terminal reveal">
+      <div class="terminal-bar">
+        <span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span>
+        <span class="terminal-title">~/code/keras-vs-jax.py</span>
+      </div>
+      <div class="terminal-body">
+<pre><span class="tk-cm"># <span class="tk-bad">❌</span> OOP — versteckter Zustand</span>
+model.<span class="tk-fn">train_step</span>(x)        <span class="tk-cm"># mutiert model.weights intern</span>
+
+<span class="tk-cm"># <span class="tk-ok">✅</span> Pure Function (JAX)</span>
+new_params = <span class="tk-fn">train_step</span>(params, x)  <span class="tk-cm"># params explizit rein &amp; raus</span></pre>
+      </div>
+    </div>
+    -->
+  </div>
+</section>
+
+<!-- ============ SECTION 3: PRNG ============ -->
+<section id="s3" class="section">
+  <span class="section-num">03 / Konsequenz</span>
+  <div class="s3-grid">
+    <div class="reveal">
+      <div class="h-eyebrow">Determinismus</div>
+    </div>
+    <h2 class="section-title reveal">Das <em>PRNG</em>-Problem.</h2>
+    <div class="prng-abbr reveal"><span>PRNG</span> · <em>Pseudo-Random Number Generator</em></div>
+    <p class="section-lead reveal">Wenn alles pure sein muss, gibt es ein Problem: Zufall. Es kann <strong style="color:var(--ink);font-weight:600;">keinen globalen Generator</strong> geben. Sonst hängt das Ergebnis davon ab, <em>wer wann zuerst würfelt</em>.</p>
+
+    <div class="prng-split reveal">
+      <div class="panel">
+        <div class="panel-head">
+          <span class="num">∅</span>
+          <h3>Globaler Seed</h3>
+          <span class="badge bad">Race Condition</span>
+        </div>
+        <p>1.000 GPUs, alle gleichzeitig auf <em>einer</em> Zufallsquelle. Wer würfelt zuerst? Undefiniert → korrelierte Zufallszahlen, leise kaputte Statistik.</p>
+        <div class="prng-chaos" id="chaosVis">
+          <div class="die">SEED</div>
+          <div class="chaos-label">→ chaos</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="num" style="color:var(--indigo);">⚇</span>
+          <h3>JAX <code style="font-family:var(--t-mono);font-size:0.7em;color:var(--indigo);">PRNGKey</code></h3>
+          <span class="badge good">Deterministisch</span>
+        </div>
+        <p>Ein Root-Key, mit <code style="font-family:var(--t-mono);font-size:13px;color:var(--indigo);">split()</code> in N unabhängige Keys aufgeteilt. Jede Operation kriegt ihren eigenen.</p>
+        <div class="prng-tree">
+          <svg viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet">
+            <!-- root -->
+            <line class="grow1" x1="200" y1="34" x2="100" y2="84" stroke="#3a4cd6" stroke-width="1.5"/>
+            <line class="grow1" x1="200" y1="34" x2="200" y2="84" stroke="#3a4cd6" stroke-width="1.5"/>
+            <line class="grow1" x1="200" y1="34" x2="300" y2="84" stroke="#3a4cd6" stroke-width="1.5"/>
+            <!-- second level -->
+            <line class="grow2" x1="100" y1="106" x2="60" y2="146" stroke="#3a4cd6" stroke-width="1" opacity="0.5"/>
+            <line class="grow2" x1="100" y1="106" x2="140" y2="146" stroke="#3a4cd6" stroke-width="1" opacity="0.5"/>
+            <line class="grow2" x1="300" y1="106" x2="260" y2="146" stroke="#3a4cd6" stroke-width="1" opacity="0.5"/>
+            <line class="grow2" x1="300" y1="106" x2="340" y2="146" stroke="#3a4cd6" stroke-width="1" opacity="0.5"/>
+            <!-- nodes -->
+            <g font-family="JetBrains Mono" font-size="10" fill="#1a1f2e">
+              <rect x="170" y="14" width="60" height="22" rx="3" fill="#3a4cd6"/>
+              <text x="200" y="29" text-anchor="middle" fill="#faf6ee" font-weight="600">key</text>
+
+              <rect x="74" y="84" width="52" height="22" rx="3" fill="#faf6ee" stroke="#3a4cd6" stroke-width="1"/>
+              <text x="100" y="99" text-anchor="middle">k₁</text>
+
+              <rect x="174" y="84" width="52" height="22" rx="3" fill="#faf6ee" stroke="#3a4cd6" stroke-width="1"/>
+              <text x="200" y="99" text-anchor="middle">k₂</text>
+
+              <rect x="274" y="84" width="52" height="22" rx="3" fill="#faf6ee" stroke="#3a4cd6" stroke-width="1"/>
+              <text x="300" y="99" text-anchor="middle">k₃</text>
+
+              <circle class="pulse-node" cx="60" cy="146" r="6" fill="#c8862a"/>
+              <circle class="pulse-node" cx="140" cy="146" r="6" fill="#c8862a"/>
+              <circle class="pulse-node" cx="260" cy="146" r="6" fill="#c8862a"/>
+              <circle class="pulse-node" cx="340" cy="146" r="6" fill="#c8862a"/>
+            </g>
+            <text x="200" y="158" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6b6356" letter-spacing="1">jax.random.split(key, n)</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="terminal reveal">
+      <div class="terminal-bar">
+        <span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span>
+        <span class="terminal-title">~/code/prng.py</span>
+      </div>
+      <div class="terminal-body">
+<pre>key = jax.random.<span class="tk-fn">PRNGKey</span>(<span class="tk-num">42</span>)
+key1, key2 = jax.random.<span class="tk-fn">split</span>(key)   <span class="tk-cm"># deterministisch geteilt</span>
+
+x = jax.random.<span class="tk-fn">normal</span>(key1, shape=(<span class="tk-num">100</span>,))</pre>
+      </div>
+    </div>
+
+    <div class="big-statement reveal">Kein globaler Zustand<span class="punct">.</span> <em>Niemals.</em></div>
+  </div>
+</section>
+
+<!-- ============ SECTION DET: 3D DETERMINISMUS ============ -->
+<section id="sdet" class="section">
+  <span class="section-num">04 / Beweis</span>
+  <div class="det-wrap">
+    <div class="reveal">
+      <div class="h-eyebrow">Determinismus, sichtbar</div>
+    </div>
+    <h2 class="section-title reveal">Selber Key. <em>Selber Pfad.</em></h2>
+    <p class="section-lead reveal">Zwei identische Loss-Landschaften. Links rollt der Optimizer mit <strong style="color:var(--ink);font-weight:600;">globalem RNG</strong>, rechts mit <strong style="color:var(--ink);font-weight:600;">PRNGKey(42)</strong>.</p>
+    <div class="prng-abbr reveal"><span>RNG</span> · <em>Random Number Generator</em></div>
+
+    <div class="det-stage reveal">
+      <div class="det-pane det-left">
+        <div class="det-pane-head">
+          <span class="det-tag bad">Globaler RNG</span>
+          <span class="det-runs">Run <b id="leftRuns">0</b></span>
+        </div>
+        <div class="det-canvas-wrap">
+          <canvas id="detCanvasLeft"></canvas>
+        </div>
+        <div class="det-pane-foot">
+          <span>Math.random() · jeder Lauf wandert woanders hin</span>
+        </div>
+      </div>
+
+      <div class="det-pane det-right">
+        <div class="det-pane-head">
+          <span class="det-tag good">PRNGKey(42)</span>
+          <span class="det-runs">Run <b id="rightRuns">0</b></span>
+        </div>
+        <div class="det-canvas-wrap">
+          <canvas id="detCanvasRight"></canvas>
+        </div>
+        <div class="det-pane-foot">
+          <span>mulberry32(42) · jeder Lauf legt sich auf den letzten</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="det-controls reveal">
+      <button class="det-btn primary" id="detResetBtn" type="button">↻ Reset · 1 Lauf</button>
+      <button class="det-btn" id="detBurstBtn" type="button">⚡ Reset · 25 Läufe</button>
+      <button class="det-btn ghost" id="detClearBtn" type="button">Trails löschen</button>
+    </div>
+
+    <div class="big-statement reveal" style="margin-top:clamp(36px, 5vh, 64px);">Reproduzierbarkeit ist <em>kein Feature</em><span class="punct">.</span> Es ist eine <em>Folge</em>.</div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: FLAX ============ -->
+<section id="s4" class="section">
+  <span class="corner-glyph cg-1">ƒ</span>
+  <span class="corner-glyph cg-2">⊞</span>
+  <span class="section-num">05 / Architektur</span>
+  <div class="s4-wrap">
+    <div class="reveal">
+      <div class="h-eyebrow">Flax · Neural Networks auf JAX</div>
+    </div>
+    <h2 class="section-title reveal">Ein Netz <em>ohne Gedächtnis</em>… das trotzdem Gewichte hat?</h2>
+    <p class="section-lead reveal">Flax ist die Standard-Bibliothek für neuronale Netze auf JAX. Architektur und Gewichte werden strikt getrennt: das Modell ist <strong style="color:var(--ink);font-weight:600;">nur eine Funktion</strong>, die Parameter leben extern als <strong style="color:var(--ink);font-weight:600;">PyTree</strong>.</p>
+
+    <div class="flax-pillars reveal">
+      <div class="pillar">
+        <span class="pillar-num">01</span>
+        <h5>JAX-nativ</h5>
+        <p>Nutzt direkt <code>jit</code>, <code>grad</code>, <code>vmap</code>. Kein Wrapper, kein Overhead.</p>
+      </div>
+      <div class="pillar">
+        <span class="pillar-num">02</span>
+        <h5>Zustandslos</h5>
+        <p>Das Modul speichert keine Daten. Nur Topologie.</p>
+      </div>
+      <div class="pillar">
+        <span class="pillar-num">03</span>
+        <h5>PyTree-Params</h5>
+        <p>Gewichte als verschachteltes Dict. Immutable Tensoren an den Blättern, <code>jax.grad</code> + <code>jax.jit</code> arbeiten direkt darauf.</p>
+      </div>
+    </div>
+
+    <div class="flax-flow reveal">
+      <div class="flow-call init-call">
+        <span class="call-tag">Phase 1 · Init</span>
+        <code class="call-code">params = model.<b>init</b>(key, x_dummy)</code>
+        <span class="call-hint">erzeugt den PyTree</span>
+      </div>
+
+      <div class="flow-vert-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 80" fill="none" preserveAspectRatio="none">
+          <line x1="12" y1="2" x2="12" y2="70" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="3 4"/>
+          <polyline points="6,64 12,76 18,64" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="pytree">
+        <div class="pytree-header">
+          <span class="pytree-glyph">⊞</span>
+          <div>
+            <div class="pytree-title">PyTree<span class="pytree-meta">params</span></div>
+            <div class="pytree-sub">verschachteltes Dict · immutable · jeder Knoten ist ein Tensor</div>
+          </div>
+        </div>
+        <div class="pytree-body">
+          <div class="pytree-node">
+            <span class="node-name">Dense_0</span>
+            <div class="pytree-leaves">
+              <div class="leaf"><span class="leaf-key">kernel</span><span class="leaf-shape">(784, 256)</span></div>
+              <div class="leaf"><span class="leaf-key">bias</span><span class="leaf-shape">(256,)</span></div>
+            </div>
+          </div>
+          <div class="pytree-node">
+            <span class="node-name">Dense_1</span>
+            <div class="pytree-leaves">
+              <div class="leaf"><span class="leaf-key">kernel</span><span class="leaf-shape">(256, 64)</span></div>
+              <div class="leaf"><span class="leaf-key">bias</span><span class="leaf-shape">(64,)</span></div>
+            </div>
+          </div>
+          <div class="pytree-node">
+            <span class="node-name">Dense_2</span>
+            <div class="pytree-leaves">
+              <div class="leaf"><span class="leaf-key">kernel</span><span class="leaf-shape">(64, 10)</span></div>
+              <div class="leaf"><span class="leaf-key">bias</span><span class="leaf-shape">(10,)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-vert-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 80" fill="none" preserveAspectRatio="none">
+          <line x1="12" y1="2" x2="12" y2="70" stroke="var(--indigo)" stroke-width="1.5" stroke-dasharray="3 4"/>
+          <polyline points="6,64 12,76 18,64" fill="none" stroke="var(--indigo)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="flow-call apply-call">
+        <span class="call-tag">Phase 2 · Apply</span>
+        <code class="call-code">y = model.<b>apply</b>(params, x)</code>
+        <span class="call-hint">params + x rein, y raus · zustandslos</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5: EPIC EXAMPLE — TEMPORARILY DISABLED ============ -->
+<!--
+<section id="s5" class="section">
+  <span class="section-num">06 / Synthese</span>
+  <div style="max-width:1380px;margin:0 auto;width:100%;">
+    <div class="reveal" style="margin-bottom:8px;">
+      <div class="h-eyebrow">Alles zusammen</div>
+    </div>
+    <h2 class="section-title reveal" style="margin-bottom:clamp(20px, 3vh, 36px);"><em>20 Zeilen,</em> die es klären.</h2>
+
+    <div class="s5-grid">
+      <div class="terminal reveal">
+        <div class="terminal-bar">
+          <span class="traffic r"></span><span class="traffic y"></span><span class="traffic g"></span>
+          <span class="terminal-title">~/code/training_loop.py</span>
+        </div>
+        <div class="terminal-body">
+<pre><span class="tk-kw">import</span> jax, jax.numpy <span class="tk-kw">as</span> jnp
+<span class="tk-kw">import</span> flax.linen <span class="tk-kw">as</span> nn
+<span class="tk-kw">import</span> optax
+
+<span class="tk-cm"># 1 — Architektur (zustandslos)</span>
+model = nn.<span class="tk-fn">Dense</span>(features=<span class="tk-num">1</span>)
+
+<span class="tk-cm"># 2 — Schlüssel + dummy input</span>
+key = jax.random.<span class="tk-fn">PRNGKey</span>(<span class="tk-num">0</span>)
+x = jax.random.<span class="tk-fn">normal</span>(key, (<span class="tk-num">32</span>, <span class="tk-num">8</span>))
+y = jnp.<span class="tk-fn">sum</span>(x, axis=-<span class="tk-num">1</span>, keepdims=<span class="tk-kw">True</span>)
+
+<span class="tk-cm"># 3 — Phase 1: Gewichte erzeugen</span>
+params = model.<span class="tk-fn">init</span>(key, x)
+opt = optax.<span class="tk-fn">adam</span>(<span class="tk-num">1e-2</span>)
+opt_state = opt.<span class="tk-fn">init</span>(params)
+
+<span class="tk-cm"># 4 — Reine Loss-Funktion</span>
+<span class="tk-kw">def</span> <span class="tk-fn">loss_fn</span>(params, x, y):
+    pred = model.<span class="tk-fn">apply</span>(params, x)
+    <span class="tk-kw">return</span> jnp.<span class="tk-fn">mean</span>((pred - y) ** <span class="tk-num">2</span>)
+
+<span class="tk-cm"># 5 — Reiner Update-Schritt — alles rein, alles raus</span>
+<span class="tk-op">@</span>jax.jit
+<span class="tk-kw">def</span> <span class="tk-fn">step</span>(params, opt_state, x, y):
+    grads = jax.<span class="tk-fn">grad</span>(loss_fn)(params, x, y)
+    updates, opt_state = opt.<span class="tk-fn">update</span>(grads, opt_state)
+    params = optax.<span class="tk-fn">apply_updates</span>(params, updates)
+    <span class="tk-kw">return</span> params, opt_state
+
+<span class="tk-cm"># 6 — Loop: keine Mutation, nur Rebinding</span>
+<span class="tk-kw">for</span> _ <span class="tk-kw">in</span> <span class="tk-fn">range</span>(<span class="tk-num">200</span>):
+    params, opt_state = <span class="tk-fn">step</span>(params, opt_state, x, y)</pre>
+        </div>
+      </div>
+
+      <div class="s5-side">
+        <div class="reveal" style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="font-family:var(--t-display);font-size:36px;color:var(--amber);line-height:0.9;flex-shrink:0;">¹</div>
+            <div>
+              <h5 style="font-family:var(--t-display);font-size:20px;font-weight:400;line-height:1.1;margin-bottom:4px;">Architektur ≠ Gewichte</h5>
+              <p style="color:var(--ink-soft);font-size:14px;line-height:1.5;">Das <code style="font-family:var(--t-mono);font-size:12px;color:var(--indigo);">model</code>-Objekt hält nur die Topologie. <code style="font-family:var(--t-mono);font-size:12px;color:var(--indigo);">params</code> liegt daneben, separat und immutable.</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="font-family:var(--t-display);font-size:36px;color:var(--amber);line-height:0.9;flex-shrink:0;">²</div>
+            <div>
+              <h5 style="font-family:var(--t-display);font-size:20px;font-weight:400;line-height:1.1;margin-bottom:4px;">@jit kompiliert die Reinheit</h5>
+              <p style="color:var(--ink-soft);font-size:14px;line-height:1.5;">Weil <code style="font-family:var(--t-mono);font-size:12px;color:var(--indigo);">step</code> rein ist, kompiliert JAX sie zu XLA und repliziert sie auf 1000 GPUs ohne Codeänderung.</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            <div style="font-family:var(--t-display);font-size:36px;color:var(--amber);line-height:0.9;flex-shrink:0;">³</div>
+            <div>
+              <h5 style="font-family:var(--t-display);font-size:20px;font-weight:400;line-height:1.1;margin-bottom:4px;">Loop ohne Mutation</h5>
+              <p style="color:var(--ink-soft);font-size:14px;line-height:1.5;"><code style="font-family:var(--t-mono);font-size:12px;color:var(--indigo);">params = step(params, …)</code> bindet die Variable neu, statt das Objekt zu mutieren.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="gradient-canvas-wrap reveal">
+          <h4>Gradient Descent</h4>
+          <div class="sub">params updaten sich, als Punkt auf der Loss-Kurve</div>
+          <canvas id="gradCanvas" width="600" height="240"></canvas>
+          <div class="step-readout">
+            <span>step <b id="stepN">0</b></span>
+            <span>loss <b id="lossN">—</b></span>
+            <span>params <b id="paramN">—</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+-->
+
+<!-- ============ SECTION 6: TAKE-AWAYS ============ -->
+<section id="s6" class="section">
+  <div class="deco-orbit"></div>
+  <span class="section-num">06 / Fazit</span>
+  <div style="max-width:1320px;margin:0 auto;width:100%;">
+    <div class="reveal" style="margin-bottom:24px;">
+      <div class="h-eyebrow">Drei Säulen</div>
+    </div>
+    <h2 class="section-title reveal" style="margin-bottom:clamp(28px, 4vh, 48px);">Was bleibt <em>hängen?</em></h2>
+
+    <div class="takeaway-grid">
+      <div class="takeaway reveal">
+        <span class="num">01</span>
+        <div class="glyph">ƒ</div>
+        <h4>Pure Functions</h4>
+        <p style="color:var(--ink-soft);">Reproduzierbarkeit und Parallelität sind keine Optimierung, die man später draufpackt. Sie sind <em style="color:var(--ink);">Folge</em> der Reinheit.</p>
+        <div style="font-family:var(--t-mono);font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:auto;padding-top:14px;border-top:1px solid var(--line);">f(x) → y · always</div>
+      </div>
+      <div class="takeaway reveal">
+        <span class="num">02</span>
+        <div class="glyph">⚇</div>
+        <h4>Explizite PRNGKeys</h4>
+        <p style="color:var(--ink-soft);">Kein globaler Seed, keine Race Conditions. Jede Zufallsoperation kriegt ihren <em style="color:var(--ink);">eigenen</em> Schlüssel.</p>
+        <div style="font-family:var(--t-mono);font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:auto;padding-top:14px;border-top:1px solid var(--line);">jax.random.split</div>
+      </div>
+      <div class="takeaway reveal">
+        <span class="num">03</span>
+        <div class="glyph">⊞</div>
+        <h4>init() / apply()</h4>
+        <p style="color:var(--ink-soft);">Die Architektur ist eine Funktion. Die Gewichte sind <em style="color:var(--ink);">Daten</em>. Diese Trennung ist der ganze Punkt.</p>
+        <div style="font-family:var(--t-mono);font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:auto;padding-top:14px;border-top:1px solid var(--line);">Architektur ≠ Daten</div>
+      </div>
+    </div>
+
+    <div class="closing reveal">
+      <p class="closing-text">Zustandslosigkeit ist <em>kein Verzicht</em><span class="accent"> —</span><br/>es ist <em>Architektur.</em></p>
+      <div class="pdf-cta" style="justify-content:center;">
+        <button class="btn ghost" type="button" onclick="document.getElementById('s1').scrollIntoView({behavior:'smooth'})">
+          ↑ Zurück zum Anfang
+        </button>
+      </div>
+      <div class="footer-meta">Vortrag · <span>Mai 2026</span> · Max</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 7: QUELLEN ============ -->
+<section id="s7" class="section">
+  <span class="section-num">07 / Referenzen</span>
+  <div style="max-width:1320px;margin:0 auto;width:100%;">
+    <div class="reveal"><div class="h-eyebrow">Literatur</div></div>
+    <h2 class="section-title reveal">Worauf das <em>basiert.</em></h2>
+
+    <div class="sources-list">
+      <div class="source-item reveal">
+        <span class="src-num">[01]</span>
+        <div class="src-body">
+          <div class="src-title">Burle, M.-H.: <em>Flax's handling of model states</em></div>
+          <a class="src-link" href="https://mint.westdri.ca/ai/jx/fl_state/" target="_blank" rel="noopener">mint.westdri.ca/ai/jx/fl_state</a>
+        </div>
+        <span class="src-meta">Research Computing</span>
+      </div>
+
+      <div class="source-item reveal">
+        <span class="src-num">[02]</span>
+        <div class="src-body">
+          <div class="src-title">CodeSignal: <em>Pure Functions — The Cornerstone of JAX</em></div>
+          <a class="src-link" href="https://codesignal.com/learn/courses/jax-fundamentals-numpy-power-up/lessons/pure-functions-the-cornerstone-of-jax" target="_blank" rel="noopener">codesignal.com · jax-fundamentals</a>
+        </div>
+        <span class="src-meta">CodeSignal Learn</span>
+      </div>
+
+      <div class="source-item reveal">
+        <span class="src-num">[03]</span>
+        <div class="src-body">
+          <div class="src-title">CodeSignal: <em>Reproducible Randomness with jax.random — Keys, Splitting, and Determinism</em></div>
+          <a class="src-link" href="https://codesignal.com/learn/courses/advanced-jax-transformations-for-speed-scale/lessons/reproducible-randomness-with-jaxrandom-keys-splitting-and-determinism" target="_blank" rel="noopener">codesignal.com · advanced-jax-transformations</a>
+        </div>
+        <span class="src-meta">CodeSignal Learn</span>
+      </div>
+
+      <div class="source-item reveal">
+        <span class="src-num">[04]</span>
+        <div class="src-body">
+          <div class="src-title">The Flax Authors: <em>Flax Basics</em></div>
+          <a class="src-link" href="https://flax.readthedocs.io/en/v0.6.10/guides/flax_basics.html" target="_blank" rel="noopener">flax.readthedocs.io · guides/flax_basics</a>
+        </div>
+        <span class="src-meta">Read the Docs</span>
+      </div>
+
+      <div class="source-item reveal">
+        <span class="src-num">[05]</span>
+        <div class="src-body">
+          <div class="src-title">The JAX Authors: <em>JAX — The Sharp Bits</em></div>
+          <a class="src-link" href="https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html" target="_blank" rel="noopener">docs.jax.dev · Common_Gotchas_in_JAX</a>
+        </div>
+        <span class="src-meta">JAX Documentation</span>
+      </div>
+
+      <div class="source-item reveal">
+        <span class="src-num">[06]</span>
+        <div class="src-body">
+          <div class="src-title">N.N.: <em>The Functional Transformation — Deciphering the Stateless Paradigm Shift from Keras to Flax</em></div>
+          <span class="src-link src-link-static">Markdown-Dokument</span>
+        </div>
+        <span class="src-meta">Internes Skript</span>
+      </div>
+    </div>
+
+    <div class="ki-hint">
+      <span class="ki-chip">// Präsentation mit Hilfe von KI erstellt</span>
+    </div>
+  </div>
+</section>
+
+<script src="determinism_3d.js" defer></script>
+<script src="app.js"></script>
+
+</body>
+</html>

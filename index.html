@@ -1,1986 +1,239 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-<title>Keras 3 &amp; das Multi-Backend-Paradigma</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="interactive.css">
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vortragsreihe · Angewandte Modellierung und Systemsimulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-  /* ─────────────────────────────  RESET / BASE  ───────────────────────────── */
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --bg:#000;
-    --bg-2:#060608;
-    --ink:#fff;
-    --ink-dim:rgba(255,255,255,.80);
-    --ink-mute:rgba(255,255,255,.58);
-    --line:rgba(255,255,255,.14);
-    --line-2:rgba(255,255,255,.24);
-    --blue:#4f8ef7;
-    --blue-soft:rgba(79,142,247,.16);
-    --blue-glow:rgba(79,142,247,.35);
-    --red:#ff5a5f;
-    --amber:#f5b84a;
-    --green:#4ade80;
-
-    --max:1280px;
-    --pad:clamp(24px,5vw,72px);
-    --section-pad:clamp(60px,9vh,115px);
-
-    --f-display:"Instrument Serif",ui-serif,Georgia,serif;
-    --f-sans:"Space Grotesk",ui-sans-serif,system-ui,sans-serif;
-    --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  }
-  html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-  /* overflow-x: clip statt hidden — verhindert horizontales Scrollen OHNE sticky kaputtzumachen */
-  html,body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-weight:400;overflow-x:clip}
-  body{line-height:1.5;letter-spacing:-0.005em}
-
-  /* ─────────────── SCROLLBAR — hidden, design takes over ─────────────── */
-  /* Progress-Bar + Nav-Dots übernehmen die Scroll-Orientierung.
-     Zum Umschalten auf "thin styled": das hier durch den unteren Block ersetzen. */
-  html{scrollbar-width:none}              /* Firefox */
-  html{-ms-overflow-style:none}           /* IE/Edge Legacy */
-  html::-webkit-scrollbar{width:0;height:0;display:none}   /* Chrome · Safari · Edge */
-  body::-webkit-scrollbar{width:0;height:0;display:none}
-
-  /* ── Alternative: dezente, styled Scrollbar (optional) ──
-  html{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
-  html::-webkit-scrollbar{width:8px;height:8px}
-  html::-webkit-scrollbar-track{background:transparent}
-  html::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px;border:2px solid var(--bg)}
-  html::-webkit-scrollbar-thumb:hover{background:var(--blue);box-shadow:0 0 8px var(--blue-glow)}
-  */
-
-  /* Code-Blöcke behalten eine sichtbare, aber dezente horizontale Scrollbar */
-  pre.code{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
-  pre.code::-webkit-scrollbar{height:6px}
-  pre.code::-webkit-scrollbar-track{background:transparent}
-  pre.code::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
-  pre.code::-webkit-scrollbar-thumb:hover{background:var(--blue)}
-  ::selection{background:var(--blue);color:#000}
-  a{color:inherit;text-decoration:none}
-  img,svg{display:block;max-width:100%}
-
-  /* ─────────────────────────────  AMBIENT LAYERS  ───────────────────────────── */
-  .grain{
-    position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.06;mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/></svg>");
-  }
-  .vignette{
-    position:fixed;inset:0;pointer-events:none;z-index:1;
-    background:radial-gradient(120% 80% at 50% 50%,transparent 50%,rgba(0,0,0,.75) 100%);
-  }
-  .ambient-glow{
-    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:90vw;height:90vw;max-width:1200px;max-height:1200px;border-radius:50%;
-    background:radial-gradient(circle,rgba(79,142,247,.07),transparent 60%);
-    pointer-events:none;z-index:0;filter:blur(40px);
-    transition:left 1.2s cubic-bezier(.2,.8,.2,1),top 1.2s cubic-bezier(.2,.8,.2,1),opacity .8s;
-  }
-
-  /* ─────────────────────────────  CHROME  ───────────────────────────── */
-  .progress{
-    position:fixed;top:0;left:0;right:0;height:3px;z-index:50;
-    background:rgba(255,255,255,.05);
-  }
-  .progress__bar{
-    height:100%;width:0%;background:linear-gradient(90deg,var(--blue),#8bb4ff);
-    box-shadow:0 0 16px var(--blue-glow),0 0 32px rgba(79,142,247,.25);
-    transition:width .1s linear;position:relative;
-  }
-  /* leading-edge highlight — macht die aktuelle Scroll-Position sichtbar */
-  .progress__bar::after{
-    content:"";position:absolute;right:-1px;top:-1px;bottom:-1px;width:2px;
-    background:#fff;box-shadow:0 0 10px #fff,0 0 18px var(--blue);
-    opacity:.9;
-  }
-  .topbar{
-    position:fixed;top:0;left:0;right:0;z-index:40;padding:22px var(--pad);
-    display:flex;justify-content:space-between;align-items:center;
-    font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);
-    mix-blend-mode:difference;
-    transition:opacity .6s cubic-bezier(.2,.8,.2,1),transform .6s cubic-bezier(.2,.8,.2,1);
-  }
-  .topbar.hidden{opacity:0;transform:translateY(-8px);pointer-events:none}
-  .topbar__brand,.topbar__meta{transition:opacity .5s cubic-bezier(.2,.8,.2,1),transform .5s cubic-bezier(.2,.8,.2,1)}
-  .topbar.past-hero .topbar__brand{opacity:0;transform:translateY(-6px);pointer-events:none}
-  .topbar:not(.past-hero) .topbar__meta{opacity:0;transform:translateY(-6px);pointer-events:none}
-  .topbar__brand{display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .topbar__brand .dot{width:6px;height:6px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px var(--blue-glow)}
-  .topbar__meta{display:flex;gap:28px}
-  .topbar__meta span{position:relative}
-  .counter{font-variant-numeric:tabular-nums;color:var(--ink)}
-
-  /* Nav dots */
-  .nav{
-    position:fixed;right:clamp(16px,2.5vw,32px);top:50%;transform:translateY(-50%);
-    z-index:40;display:flex;flex-direction:column;gap:14px;
-  }
-  .nav button{
-    all:unset;cursor:pointer;width:28px;height:18px;display:flex;align-items:center;justify-content:flex-end;
-    position:relative;
-  }
-  .nav button::before{
-    content:"";width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.25);
-    transition:all .35s cubic-bezier(.2,.8,.2,1);
-  }
-  .nav button[aria-current="true"]::before{
-    width:24px;height:2px;border-radius:2px;background:var(--blue);
-    box-shadow:0 0 10px var(--blue-glow);
-  }
-  .nav button:hover::before{background:#fff}
-  .nav__label{
-    position:absolute;right:calc(100% + 12px);top:50%;transform:translate(8px,-50%);
-    font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);
-    white-space:nowrap;opacity:0;pointer-events:none;transition:all .3s;
-  }
-  .nav button:hover .nav__label,.nav button[aria-current="true"] .nav__label{
-    opacity:1;transform:translate(0,-50%);
-  }
-
-  /* ─────────────────────────────  SECTION PRIMITIVES  ───────────────────────────── */
-  section{
-    position:relative;min-height:100vh;padding:var(--section-pad) var(--pad);
-    display:flex;flex-direction:column;justify-content:center;
-    max-width:var(--max);margin:0 auto;
-  }
-  .eyebrow{
-    display:inline-flex;align-items:center;gap:10px;
-    font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--blue);
-    font-weight:500;
-  }
-  .eyebrow::before{content:"";width:26px;height:1px;background:var(--blue)}
-  .eyebrow--mono{color:var(--ink-mute);font-family:var(--f-mono);letter-spacing:.14em;font-size:12px}
-  .eyebrow--mono::before{background:var(--ink-mute)}
-
-  h1,h2,h3{font-weight:400;letter-spacing:-0.03em;line-height:1.02}
-  h1{font-family:var(--f-display);font-size:clamp(56px,9vw,148px);font-weight:400}
-  h1 em{font-style:italic;color:var(--blue)}
-  h2{font-family:var(--f-display);font-size:clamp(40px,6.2vw,92px);line-height:1.04}
-  h2 em{font-style:italic;color:var(--blue)}
-  h3{font-family:var(--f-sans);font-size:clamp(22px,2.2vw,30px);font-weight:500;letter-spacing:-0.02em;line-height:1.2}
-  p.lead{font-size:clamp(19px,1.75vw,25px);color:var(--ink-dim);max-width:64ch;line-height:1.55}
-  p.body{font-size:17px;color:var(--ink-dim);line-height:1.65;max-width:58ch}
-
-  .accent{color:var(--blue)}
-  .kicker{font-family:var(--f-mono);font-size:13px;letter-spacing:.1em;color:var(--ink-mute);text-transform:uppercase}
-
-  /* Reveal primitive */
-  .reveal{opacity:0;transform:translateY(24px);transition:opacity 1s cubic-bezier(.2,.8,.2,1),transform 1s cubic-bezier(.2,.8,.2,1)}
-  .reveal.in{opacity:1;transform:none}
-  .reveal[data-delay="1"]{transition-delay:.08s}
-  .reveal[data-delay="2"]{transition-delay:.16s}
-  .reveal[data-delay="3"]{transition-delay:.26s}
-  .reveal[data-delay="4"]{transition-delay:.36s}
-  .reveal[data-delay="5"]{transition-delay:.46s}
-  .reveal[data-delay="6"]{transition-delay:.58s}
-  .reveal[data-delay="7"]{transition-delay:.7s}
-  .reveal[data-delay="8"]{transition-delay:.82s}
-
-  /* Line sweep */
-  .rule{height:1px;background:var(--line);transform-origin:left;transform:scaleX(0);transition:transform 1.2s cubic-bezier(.2,.8,.2,1)}
-  .rule.in{transform:scaleX(1)}
-
-  /* ─────────────────────────────  S1 — TITLE  ───────────────────────────── */
-  /* Hero nicht mehr full-viewport centered — Content oben, kompakter Übergang zur nächsten Sektion */
-  #s1{
-    justify-content:flex-start;
-    min-height:auto;
-    padding-top:clamp(80px,13vh,150px);
-    padding-bottom:clamp(50px,8vh,110px);
-  }
-  .hero__tagline{
-    margin-top:28px;display:flex;flex-wrap:wrap;gap:10px;
-  }
-  .chip{
-    padding:7px 15px;border:1px solid var(--line-2);border-radius:999px;
-    font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;color:var(--ink-dim);
-    backdrop-filter:blur(4px);
-  }
-  .chip--blue{border-color:rgba(79,142,247,.45);color:var(--blue);background:var(--blue-soft)}
-  .hero__sub{margin-top:22px;max-width:56ch;color:var(--ink-dim);font-size:clamp(17px,1.45vw,21px);line-height:1.55}
-  .hero__byline{
-    margin-top:44px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
-    padding-top:24px;border-top:1px solid var(--line-2);max-width:640px;
-  }
-  .hero__byline-label{
-    font-family:var(--f-mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-mute);
-  }
-  .hero__byline-name{
-    font-family:var(--f-display);font-size:clamp(22px,2.2vw,30px);color:var(--ink);
-    letter-spacing:-0.01em;line-height:1;
-  }
-  .hero__byline-name em{font-style:italic;color:var(--blue)}
-  .hero__byline-meta{
-    margin-left:auto;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--ink-mute);
-  }
-  .hero__footline{
-    position:absolute;left:var(--pad);right:var(--pad);bottom:48px;
-    display:flex;justify-content:space-between;align-items:flex-end;gap:32px;
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mute);
-  }
-  .hero__footline .scroll-hint{display:flex;align-items:center;gap:12px;color:var(--ink-dim)}
-  .scroll-hint__line{width:64px;height:1px;background:var(--ink-dim);position:relative;overflow:hidden}
-  .scroll-hint__line::after{content:"";position:absolute;inset:0;background:var(--blue);transform:translateX(-100%);animation:sweep 2.6s ease-in-out infinite}
-  @keyframes sweep{0%{transform:translateX(-100%)}50%{transform:translateX(0)}100%{transform:translateX(100%)}}
-
-  .hero__orbit{
-    position:absolute;right:calc(var(--pad) - 20px);top:50%;transform:translateY(-50%);
-    width:min(38vw,460px);aspect-ratio:1;pointer-events:none;
-  }
-  /* 3D-Canvas-Container — wenn Three.js mountet, befüllt sich das */
-  .hero__orbit-canvas{position:absolute;inset:0;width:100%;height:100%}
-  .hero__orbit-canvas canvas{display:block;width:100%!important;height:100%!important}
-  /* Hardware-3D als dezenter Hintergrund-Akzent in Section 5 */
-  .hw-card__3d-bg canvas{position:absolute;inset:0;display:block;width:100%!important;height:100%!important}
-  .hw-card__3d-bg{transform-origin:center center}
-  /* SVG-Fallback ausblenden, sobald das 3D-Canvas einen Canvas hat */
-  .hero__orbit-canvas:not(:empty) ~ .hero__orbit-svg{display:none}
-  .hero__orbit svg{width:100%;height:100%;overflow:visible}
-  .hero__orbit .ring{fill:none;stroke:var(--line-2);stroke-width:1}
-  .hero__orbit .ring--dashed{stroke-dasharray:2 6;stroke:rgba(79,142,247,.35)}
-  .hero__orbit .node{fill:var(--blue);filter:drop-shadow(0 0 8px var(--blue-glow))}
-  .hero__orbit .label{fill:var(--ink-dim);font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
-  /* Satelliten: EINE Runde drehen, dann auf den Keras-3-Kreis konvergieren.
-     Delay passt zu Boot-Screen (~4s) — Animation startet wenn User den Hero sieht.
-     transform-origin: 0 0 zielt bei viewBox "-250 -250 500 500" auf den User-Koordinaten-Ursprung. */
-  .spin-slow{
-    transform-origin:0 0;
-    animation:orbitConverge 6s cubic-bezier(.25,.7,.35,1) 1 forwards;
-    animation-delay:4.3s;
-  }
-  .spin-slow-rev{
-    transform-origin:0 0;
-    animation:orbitConvergeRev 6s cubic-bezier(.25,.7,.35,1) 1 forwards;
-    animation-delay:4.3s;
-  }
-  @keyframes orbitConverge{
-    0%   {transform:rotate(0deg)   scale(1)}
-    60%  {transform:rotate(360deg) scale(1)}
-    100% {transform:rotate(360deg) scale(var(--end-scale,0.3))}
-  }
-  @keyframes orbitConvergeRev{
-    0%   {transform:rotate(0deg)    scale(1)}
-    60%  {transform:rotate(-360deg) scale(1)}
-    100% {transform:rotate(-360deg) scale(var(--end-scale,0.3))}
-  }
-  /* Labels (JAX/TF/PyTorch) faden während der Konvergenz-Phase aus — Endzustand nur Punkte */
-  .hero__orbit .spin-slow .label,
-  .hero__orbit .spin-slow-rev .label{
-    animation:orbitLabelFade 6s cubic-bezier(.25,.7,.35,1) 1 forwards;
-    animation-delay:4.3s;
-  }
-  @keyframes orbitLabelFade{
-    0%, 55% {opacity:1}
-    100%    {opacity:0}
-  }
-  /* Dots (Satelliten) counter-scalen, damit sie beim Shrink sichtbar bleiben */
-  .hero__orbit .spin-slow .node,
-  .hero__orbit .spin-slow-rev .node{
-    animation:orbitDotCounter 6s cubic-bezier(.25,.7,.35,1) 1 forwards;
-    animation-delay:4.3s;
-    transform-origin:center;transform-box:fill-box;
-  }
-  @keyframes orbitDotCounter{
-    0%, 60% {transform:scale(1)}
-    100%    {transform:scale(var(--dot-compensate,3))}
-  }
-
-  /* ─────────────────────────────  S2 — PROBLEM  ───────────────────────────── */
-  .timeline{
-    position:relative;margin-top:56px;
-    display:grid;grid-template-columns:120px 1fr;gap:0 32px;
-  }
-  .timeline__axis{
-    grid-column:1;grid-row:1 / span 99;
-    position:relative;
-  }
-  .timeline__axis::before{
-    content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line-2);
-  }
-  .tl-row{
-    display:contents;
-  }
-  .tl-year{
-    grid-column:1;position:relative;padding:22px 0;
-    font-family:var(--f-mono);font-size:14px;letter-spacing:.1em;color:var(--ink-dim);
-    text-align:right;padding-right:28px;
-  }
-  .tl-year::after{
-    content:"";position:absolute;right:-5px;top:30px;width:9px;height:9px;border-radius:50%;
-    background:#000;border:1px solid var(--line-2);
-  }
-  .tl-card{
-    grid-column:2;padding:22px 0 22px 28px;border-left:1px solid var(--line);
-    position:relative;
-  }
-  .tl-card::before{
-    content:"";position:absolute;left:-1px;top:30px;width:14px;height:1px;background:var(--line-2);
-  }
-  .tl-card__head{display:flex;gap:12px;align-items:baseline;margin-bottom:6px}
-  .tl-card__stack{font-family:var(--f-mono);font-size:13px;letter-spacing:.08em;padding:3px 9px;border-radius:4px}
-  .tl-stack--tf{background:rgba(245,184,74,.14);color:var(--amber)}
-  .tl-stack--pt{background:rgba(255,90,95,.14);color:var(--red)}
-  .tl-stack--jax{background:rgba(79,142,247,.14);color:var(--blue)}
-  .tl-stack--keras{background:rgba(139,180,255,.18);color:#8bb4ff;border:1px solid rgba(139,180,255,.35)}
-  .tl-stack--pinn{background:rgba(74,222,128,.12);color:var(--green)}
-  .tl-card__title{font-size:20px;font-weight:500;letter-spacing:-0.01em;line-height:1.3}
-  .tl-card__body{font-size:16px;color:var(--ink-dim);line-height:1.6;max-width:60ch;margin-top:6px}
-
-  .fragmentation{
-    margin-top:72px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
-    border:1px solid var(--line);
-  }
-  .frag{
-    background:var(--bg);padding:28px 24px;min-height:200px;display:flex;flex-direction:column;justify-content:space-between;
-    position:relative;overflow:hidden;
-  }
-  .frag::before{
-    content:"";position:absolute;inset:0;
-    background:radial-gradient(80% 80% at 0% 0%,var(--_c,transparent),transparent 60%);opacity:.5;
-  }
-  .frag--tf{--_c:rgba(245,184,74,.10)}
-  .frag--pt{--_c:rgba(255,90,95,.10)}
-  .frag--jax{--_c:rgba(79,142,247,.10)}
-  .frag__name{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mute);position:relative}
-  .frag__title{font-family:var(--f-display);font-size:34px;line-height:1;margin-top:4px;position:relative}
-  .frag__tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;position:relative}
-  .frag__tag{font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);padding:4px 9px;border:1px solid var(--line-2);border-radius:3px}
-  .frag__pain{font-size:15px;color:var(--ink-dim);line-height:1.5;margin-top:12px;position:relative}
-
-  /* ─────────────────────────────  S3 — ARCHITECTURE  ───────────────────────────── */
-  .arch{
-    margin-top:56px;display:grid;grid-template-rows:auto auto auto auto;gap:18px;
-  }
-  .arch__tier{
-    display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:center;
-  }
-  .arch__tier-label{
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mute);
-    text-align:right;
-  }
-  .arch-api{
-    border:1px solid rgba(79,142,247,.4);background:linear-gradient(180deg,rgba(79,142,247,.08),rgba(79,142,247,.02));
-    padding:28px 32px;border-radius:6px;position:relative;overflow:hidden;
-  }
-  .arch-api::before{
-    content:"";position:absolute;inset:0;background:radial-gradient(80% 140% at 50% 0%,var(--blue-soft),transparent 70%);pointer-events:none;
-  }
-  .arch-api__title{font-family:var(--f-display);font-size:40px;position:relative}
-  .arch-api__desc{font-size:16px;color:var(--ink-dim);margin-top:6px;position:relative;line-height:1.5}
-  .arch-api__methods{display:flex;gap:10px;margin-top:18px;font-family:var(--f-mono);font-size:13px;color:var(--ink-dim);position:relative;flex-wrap:wrap}
-  .arch-api__methods span{padding:4px 10px;border:1px solid var(--line-2);border-radius:3px}
-
-  .arch-conn{
-    position:relative;height:60px;
-  }
-  .arch-conn svg{width:100%;height:100%;overflow:visible}
-  .arch-conn path{fill:none;stroke:var(--line-2);stroke-width:1;stroke-dasharray:400;stroke-dashoffset:400;transition:stroke-dashoffset 1.4s ease}
-  .arch-conn.in path{stroke-dashoffset:0}
-  .arch-conn path.active{stroke:var(--blue);opacity:.6}
-
-  .arch-backends{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
-  }
-  .arch-backend{
-    padding:20px 20px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);
-    position:relative;transition:all .4s cubic-bezier(.2,.8,.2,1);
-  }
-  .arch-backend:hover,.arch-backend.hl{border-color:var(--blue);background:rgba(79,142,247,.05);transform:translateY(-2px)}
-  .arch-backend__name{font-family:var(--f-display);font-size:30px;letter-spacing:-0.02em}
-  .arch-backend__note{font-size:13px;color:var(--ink-dim);font-family:var(--f-mono);letter-spacing:.04em;margin-top:4px}
-  .arch-backend__badge{
-    position:absolute;top:16px;right:16px;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-    padding:3px 8px;border-radius:3px;color:var(--blue);background:var(--blue-soft);
-  }
-
-  .arch-hw{
-    display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
-  }
-  .arch-hw__chip{
-    padding:16px 18px;border:1px dashed var(--line-2);border-radius:4px;
-    font-family:var(--f-mono);font-size:13px;color:var(--ink-dim);text-align:center;
-    display:flex;flex-direction:column;gap:4px;
-  }
-  .arch-hw__chip strong{color:var(--ink);font-family:var(--f-sans);font-size:16px;letter-spacing:.02em;font-weight:500}
-  .arch-hw__chip em{font-style:normal;color:var(--ink-mute);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-
-  /* ─────────────────────────────  S4 — CODE  ───────────────────────────── */
-  .code-grid{
-    margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;
-  }
-  .code-card{
-    border:1px solid var(--line);background:#08090c;border-radius:8px;overflow:hidden;
-    box-shadow:0 30px 80px -40px rgba(0,0,0,.8);
-  }
-  .code-card__head{
-    display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);
-    background:rgba(255,255,255,.02);
-  }
-  .code-card__dots{display:flex;gap:6px}
-  .code-card__dots span{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.14)}
-  .code-card__title{font-family:var(--f-mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em}
-  .code-card__badge{margin-left:auto;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-    padding:3px 10px;border-radius:3px;color:var(--blue);background:var(--blue-soft);border:1px solid rgba(79,142,247,.3)}
-  pre.code{
-    margin:0;padding:24px 26px;font-family:var(--f-mono);font-size:15px;line-height:1.7;
-    overflow-x:auto;color:#eef0f4;
-  }
-  /* tokens */
-  .tk-com{color:#8d93a1;font-style:italic}
-  .tk-kw{color:#c678dd}
-  .tk-str{color:#98c379}
-  .tk-num{color:#d19a66}
-  .tk-fn{color:#61afef}
-  .tk-cls{color:#e5c07b}
-  .tk-op{color:#c8ccd4}
-  .tk-env{color:#4f8ef7;font-weight:500}
-  .tk-var{color:#e06c75}
-
-  .code-switcher{display:flex;gap:0;border-bottom:1px solid var(--line)}
-  .code-tab{
-    all:unset;cursor:pointer;padding:11px 18px;font-family:var(--f-mono);font-size:13px;color:var(--ink-mute);
-    border-right:1px solid var(--line);transition:all .2s;
-  }
-  .code-tab[aria-selected="true"]{color:var(--blue);background:rgba(79,142,247,.06)}
-  .code-tab:hover{color:var(--ink)}
-
-  .code-notes{padding-left:8px}
-  .code-notes h3{margin-bottom:16px}
-  .code-notes ul{list-style:none;display:flex;flex-direction:column;gap:18px;margin-top:18px}
-  .code-notes li{display:grid;grid-template-columns:auto 1fr;gap:16px;font-size:16px;color:var(--ink-dim);line-height:1.6}
-  .code-notes li code{font-family:var(--f-mono);font-size:13px;color:var(--blue);background:var(--blue-soft);padding:3px 8px;border-radius:3px;white-space:nowrap;align-self:start;margin-top:1px}
-
-  .env-line{
-    margin-top:24px;padding:16px 20px;border:1px solid var(--line);border-radius:6px;
-    font-family:var(--f-mono);font-size:15px;color:var(--ink-dim);background:#08090c;
-    display:flex;align-items:center;gap:12px;
-  }
-  .env-line::before{content:"$";color:var(--blue);font-weight:700}
-
-  /* ─────────────────────────────  COMPARE — OHNE vs MIT KERAS 3  ───────────────────────────── */
-  .compare-grid{
-    margin-top:36px;display:grid;grid-template-columns:1fr auto 1fr;gap:24px;align-items:stretch;
-  }
-  /* Pfeil-Divider als echtes Grid-Item, vertikal zentriert */
-  .compare-arrow{
-    align-self:center;width:60px;height:60px;border-radius:50%;background:var(--bg);
-    border:1px solid rgba(79,142,247,.45);color:var(--blue);font-family:var(--f-display);
-    font-size:44px;display:flex;align-items:center;justify-content:center;
-    box-shadow:0 0 24px rgba(79,142,247,.25);line-height:1;padding-bottom:6px;
-    transition:transform .3s,box-shadow .3s;
-  }
-  .compare-grid.tab-switched .compare-arrow{animation:arrowPulse .7s cubic-bezier(.2,.8,.2,1)}
-  @keyframes arrowPulse{
-    0%{transform:scale(1)}
-    45%{transform:scale(1.2);box-shadow:0 0 48px rgba(79,142,247,.7),0 0 12px rgba(79,142,247,.9)}
-    100%{transform:scale(1);box-shadow:0 0 24px rgba(79,142,247,.25)}
-  }
-  .compare-side{display:flex;flex-direction:column;gap:14px;min-width:0}
-  .compare-label{
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-mute);
-  }
-  .compare-side--after .compare-label{color:var(--blue)}
-  .compare-title{
-    font-family:var(--f-display);font-size:clamp(24px,2.8vw,36px);line-height:1.15;
-    letter-spacing:-0.02em;margin-bottom:8px;max-width:22ch;
-  }
-  .compare-title em{font-style:italic;color:var(--blue)}
-
-  .compare-snippet{
-    border:1px solid var(--line);border-radius:6px;background:#08090c;overflow:hidden;
-    transition:border-color .3s;
-  }
-  .compare-snippet__head{
-    padding:9px 16px;border-bottom:1px solid var(--line);
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;color:var(--ink-dim);
-    display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.02);
-  }
-  .compare-snippet__head::before{
-    content:"";width:8px;height:8px;border-radius:50%;background:var(--ink-mute);
-  }
-  .compare-snippet--tf .compare-snippet__head::before{background:var(--amber)}
-  .compare-snippet--pt .compare-snippet__head::before{background:var(--red)}
-  .compare-snippet--jax .compare-snippet__head::before{background:var(--blue)}
-  .compare-snippet--keras .compare-snippet__head::before{
-    background:var(--blue);box-shadow:0 0 10px var(--blue-glow);
-  }
-
-  .compare-snippet pre{
-    margin:0;padding:14px 18px;font-family:var(--f-mono);font-size:13px;line-height:1.65;
-    overflow-x:auto;color:#c5c8cf;
-  }
-  /* Links: nicht-aktive Snippets dimmen über Stage-Logik (siehe unten) */
-
-  /* Rechts: prominenter */
-  .compare-side--after .compare-snippet--keras{
-    border-color:rgba(79,142,247,.4);background:#0a0c12;
-    box-shadow:0 20px 60px -30px var(--blue-glow);
-  }
-  .compare-side--after .compare-snippet--keras pre{
-    font-size:14.5px;padding:22px 22px;line-height:1.7;color:#eef0f4;
-  }
-
-  .compare-note{
-    font-family:var(--f-sans);font-size:14px;color:var(--ink-dim);
-    padding:14px 18px;border-left:2px solid var(--blue);
-    background:rgba(79,142,247,.05);border-radius:0 4px 4px 0;line-height:1.6;
-  }
-  .compare-note em{font-style:italic;color:var(--blue);font-weight:500}
-  .compare-note code{font-family:var(--f-mono);font-size:12.5px;color:var(--blue);background:var(--blue-soft);padding:2px 6px;border-radius:3px}
-
-  /* Tab-Switcher links */
-  .compare-tabs{
-    display:flex;gap:4px;margin-bottom:-1px;position:relative;z-index:2;
-  }
-  .compare-tab-btn{
-    all:unset;cursor:pointer;padding:9px 16px;
-    font-family:var(--f-mono);font-size:12.5px;letter-spacing:.04em;color:var(--ink-mute);
-    border:1px solid var(--line);border-bottom:none;border-radius:5px 5px 0 0;
-    background:#050607;transition:all .25s;
-    display:flex;align-items:center;gap:9px;
-  }
-  .compare-tab-btn::before{
-    content:"";width:8px;height:8px;border-radius:50%;background:var(--_c,var(--ink-mute));
-    transition:box-shadow .3s;
-  }
-  .compare-tab-btn[data-target$="tf"]{--_c:var(--amber)}
-  .compare-tab-btn[data-target$="pt"]{--_c:var(--red)}
-  .compare-tab-btn[data-target$="jax"]{--_c:var(--blue)}
-  .compare-tab-btn:hover{color:var(--ink)}
-  .compare-tab-btn[aria-selected="true"]{
-    color:var(--ink);background:#08090c;border-color:var(--line-2);
-  }
-  .compare-tab-btn[aria-selected="true"]::before{box-shadow:0 0 10px var(--_c)}
-
-  /* Stage: alle Snippets liegen auf dem gleichen Grid-Feld, fade zwischen ihnen */
-  .compare-stage{display:grid;position:relative}
-  .compare-stage > .compare-snippet{
-    grid-area:1/1;opacity:0;pointer-events:none;
-    transition:opacity .35s cubic-bezier(.2,.8,.2,1),transform .35s cubic-bezier(.2,.8,.2,1);
-    transform:translateY(4px);
-  }
-  .compare-stage > .compare-snippet.is-active{
-    opacity:1;pointer-events:auto;transform:none;
-  }
-
-  /* Stats-Streifen unter dem Vergleich */
-  .compare-stats{
-    margin-top:32px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
-    background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;
-  }
-  .compare-stat{
-    background:var(--bg);padding:20px 22px;display:flex;flex-direction:column;gap:6px;
-  }
-  .compare-stat__lbl{
-    font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute);
-  }
-  .compare-stat__val{
-    font-family:var(--f-display);font-size:clamp(22px,2.4vw,30px);line-height:1.1;letter-spacing:-0.01em;
-  }
-  .compare-stat__val em{font-style:italic;color:var(--blue)}
-  .compare-stat__sub{
-    font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);line-height:1.4;
-  }
-
-  /* ─────────────────────────────  S5 — JAX TRANSFORMS  ───────────────────────────── */
-  .transforms{
-    margin-top:56px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
-    border:1px solid var(--line);
-  }
-  .transform{
-    background:var(--bg);padding:32px 24px;display:flex;flex-direction:column;gap:14px;
-    position:relative;min-height:280px;transition:background .4s;
-  }
-  .transform:hover{background:#06070a}
-  .transform__sig{
-    font-family:var(--f-mono);font-size:24px;color:var(--blue);letter-spacing:-0.02em;
-  }
-  .transform__sig span{color:var(--ink-mute)}
-  .transform__what{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mute)}
-  .transform__title{font-size:20px;font-weight:500;letter-spacing:-0.01em;line-height:1.25}
-  .transform__desc{font-size:15.5px;color:var(--ink-dim);line-height:1.6;margin-top:auto}
-  .transform__viz{height:48px;position:relative}
-  .transform__viz svg{width:100%;height:100%;overflow:visible}
-
-  .jax-quote{
-    margin-top:48px;padding:24px 28px;border-left:2px solid var(--blue);
-    font-family:var(--f-display);font-size:clamp(22px,2.4vw,30px);line-height:1.3;font-style:italic;
-    color:var(--ink);max-width:70ch;
-  }
-  .jax-quote__src{
-    display:block;margin-top:14px;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;
-    color:var(--ink-mute);font-style:normal;text-transform:uppercase;
-  }
-
-  /* ─────────────── STICKY JAX HEADER (bleibt beim Scrollen durch use-cases) ─────────────── */
-  /* Section #s4 darf NICHT flex-centered sein, sonst kollidiert sticky mit justify-content */
-  #s4{display:block;justify-content:unset;padding-top:clamp(40px,7vh,80px)}
-  .jax-sticky-head{
-    position:sticky;top:0;z-index:5;
-    padding:18px 4px 24px;margin-bottom:8px;
-    background:rgba(0,0,0,.45);
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    /* Sanfte Unterkante — verhindert dass Glow/Grid hart abgeschnitten wirken */
-    -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,1) 0%,rgba(0,0,0,1) 72%,rgba(0,0,0,.4) 90%,rgba(0,0,0,0) 100%);
-            mask-image:linear-gradient(to bottom,rgba(0,0,0,1) 0%,rgba(0,0,0,1) 72%,rgba(0,0,0,.4) 90%,rgba(0,0,0,0) 100%);
-  }
-  .jax-sticky-head h2{margin-top:10px}
-
-  /* ─────────────── USE-CASE BLOCK (Canvas + Text, wechselnd links/rechts) ─────────────── */
-  .usecase-block{
-    margin-top:72px;min-height:72vh;
-    display:grid;grid-template-columns:1.15fr 0.85fr;gap:48px;align-items:center;
-  }
-  .usecase-block__text{display:flex;flex-direction:column;min-width:0}
-  .usecase-block__h{
-    font-family:var(--f-display);font-size:clamp(30px,3.8vw,48px);font-weight:400;
-    line-height:1.08;letter-spacing:-0.02em;margin-top:14px;
-  }
-  .usecase-block__h em{font-style:italic;color:var(--blue)}
-  .usecase-block__body{
-    font-size:16px;color:var(--ink-dim);line-height:1.6;margin-top:18px;max-width:54ch;
-  }
-  .usecase-block__body em{font-style:italic;color:var(--blue)}
-  .usecase-block__body code{
-    font-family:var(--f-mono);font-size:13px;color:var(--blue);background:var(--blue-soft);
-    padding:2px 6px;border-radius:3px;
-  }
-  .usecase-block__points{margin-top:24px;display:flex;flex-direction:column;gap:16px}
-  .usecase-point{
-    display:grid;grid-template-columns:40px 1fr;gap:12px;font-size:15px;color:var(--ink-dim);line-height:1.5;
-  }
-  .usecase-point__num{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;color:var(--blue);padding-top:3px}
-  .usecase-point strong{color:var(--ink);font-weight:500}
-
-  .usecase-badge{
-    margin-top:22px;display:inline-flex;align-items:center;gap:10px;
-    padding:8px 14px;border:1px solid rgba(79,142,247,.4);border-radius:999px;
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--blue);background:var(--blue-soft);
-    align-self:flex-start;
-  }
-  .usecase-badge::before{
-    content:"";width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px var(--blue-glow);
-  }
-
-  /* Mini-Erklärer: Was ist JAX, was ist XLA — zwei Werkzeug-Karten */
-  .jax-xla-intro{
-    margin:32px 0 8px;display:grid;grid-template-columns:1fr 1fr;gap:16px;
-  }
-  .jax-xla-intro__card{
-    padding:22px 24px;border:1px solid var(--line);border-radius:6px;
-    background:linear-gradient(180deg,rgba(79,142,247,.04),transparent);
-    display:flex;flex-direction:column;gap:6px;
-  }
-  .jax-xla-intro__label{
-    font-family:var(--f-display);font-size:clamp(28px,3vw,40px);line-height:1;
-    letter-spacing:-0.02em;color:var(--blue);font-style:italic;
-  }
-  .jax-xla-intro__tagline{
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
-    color:var(--ink-mute);margin-top:2px;
-  }
-  .jax-xla-intro__desc{
-    font-size:15px;color:var(--ink-dim);line-height:1.55;margin-top:12px;
-  }
-  .jax-xla-intro__desc em{font-style:italic;color:var(--ink);font-weight:500}
-  @media (max-width:960px){
-    .jax-xla-intro{grid-template-columns:1fr}
-  }
-
-  /* Mini-Erklärer: Bayesian Inference in 3 Schritten */
-  .bayes-steps{
-    margin:22px 0 6px;display:grid;
-    grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;
-  }
-  .bayes-step{
-    padding:10px 12px;border:1px solid var(--line);border-radius:5px;
-    background:rgba(255,255,255,.015);
-    display:flex;flex-direction:column;gap:5px;min-width:0;
-  }
-  .bayes-step--arrow{
-    border:none;background:none;padding:0;
-    display:flex;align-items:center;justify-content:center;
-    font-family:var(--f-display);font-size:22px;color:var(--ink-mute);line-height:1;
-  }
-  .bayes-step__lbl{
-    font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-    color:rgba(255,255,255,.45);
-  }
-  .bayes-step__lbl--data{color:var(--amber)}
-  .bayes-step__lbl--post{color:var(--blue)}
-  .bayes-step__txt{
-    font-size:12.5px;color:var(--ink-dim);line-height:1.4;
-  }
-  .bayes-step__txt em{font-style:italic;color:var(--ink)}
-
-  /* Canvas-Container mit Caption darunter */
-  .usecase-viz-col{display:flex;flex-direction:column;gap:14px;min-width:0}
-  .usecase-block__viz{
-    aspect-ratio:4/3;border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden;
-    background:linear-gradient(180deg,#060810,#020204);
-  }
-  .usecase-block__viz canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-
-  /* Dezenter Play/Pause-Button oben rechts im Canvas */
-  .canvas-toggle{
-    position:absolute;top:10px;right:10px;z-index:3;
-    width:28px;height:28px;border-radius:50%;
-    border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.55);
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    color:var(--ink-dim);cursor:pointer;
-    display:flex;align-items:center;justify-content:center;padding:0;
-    opacity:.5;transition:opacity .25s,border-color .25s,color .25s,transform .25s;
-  }
-  .canvas-toggle:hover{opacity:1;border-color:var(--blue);color:var(--blue);transform:scale(1.08)}
-  .canvas-toggle svg{width:10px;height:10px;display:block;fill:currentColor}
-  .canvas-toggle[data-state="playing"] .ico-play{display:none}
-  .canvas-toggle[data-state="paused"] .ico-pause{display:none}
-  .canvas-toggle[data-state="paused"]{color:var(--blue);border-color:rgba(79,142,247,.45);opacity:.85}
-  .usecase-canvas-caption{
-    display:flex;justify-content:space-between;align-items:baseline;gap:18px;
-    font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--ink-dim);
-    text-transform:uppercase;padding:0 4px;
-  }
-  .usecase-canvas-caption__eq{color:var(--blue);font-size:13px;font-family:var(--f-mono)}
-  .usecase-canvas-caption__lbl{text-align:right}
-
-  /* ─────────────────────────────  S6 — PINN USE CASE  ───────────────────────────── */
-  .usecase{
-    margin-top:56px;display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:start;
-  }
-  .usecase__visual{
-    aspect-ratio:1/.85;border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden;
-    background:
-      radial-gradient(60% 80% at 30% 40%,rgba(79,142,247,.14),transparent 70%),
-      linear-gradient(180deg,#060810,#020204);
-  }
-  .usecase__visual svg{position:absolute;inset:0;width:100%;height:100%}
-  .usecase__visual .heatmap{
-    position:absolute;inset:12%;
-    background:
-      radial-gradient(25% 30% at 30% 40%,rgba(255,90,95,.8),transparent 60%),
-      radial-gradient(20% 25% at 70% 65%,rgba(245,184,74,.8),transparent 60%),
-      radial-gradient(30% 35% at 55% 30%,rgba(79,142,247,.7),transparent 60%),
-      radial-gradient(25% 25% at 20% 75%,rgba(74,222,128,.6),transparent 60%);
-    filter:blur(18px);mix-blend-mode:screen;opacity:.85;
-  }
-  .usecase__visual .grid{stroke:rgba(255,255,255,.06);stroke-width:.5;fill:none}
-  .usecase__visual .iso{stroke:rgba(79,142,247,.6);stroke-width:1;fill:none;opacity:.8}
-  .usecase__visual .label{
-    position:absolute;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;color:var(--ink-dim);
-    text-transform:uppercase;
-  }
-  .usecase__label--tl{top:14px;left:14px}
-  .usecase__label--tr{top:14px;right:14px;color:var(--blue)}
-  .usecase__label--br{bottom:14px;right:14px}
-
-  .pinn-eq{
-    margin-top:22px;font-family:var(--f-mono);font-size:15.5px;color:var(--ink-dim);letter-spacing:.02em;
-    padding:16px 20px;border:1px dashed var(--line-2);border-radius:4px;line-height:1.7;
-  }
-  .pinn-eq b{color:var(--blue);font-weight:400}
-  .pinn-points{margin-top:24px;display:flex;flex-direction:column;gap:22px}
-  .pinn-point{display:grid;grid-template-columns:38px 1fr;gap:14px;align-items:start}
-  .pinn-point__num{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;color:var(--blue);padding-top:4px}
-  .pinn-point__title{font-size:18px;font-weight:500;letter-spacing:-0.01em;margin-bottom:6px;line-height:1.3}
-  .pinn-point__body{font-size:15.5px;color:var(--ink-dim);line-height:1.6;max-width:50ch}
-
-  /* ─────────────────────────────  S7 — PERFORMANCE  ───────────────────────────── */
-  .perf{
-    margin-top:56px;display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:start;
-  }
-  .perf__chart{
-    padding:32px 28px;border:1px solid var(--line);border-radius:6px;background:linear-gradient(180deg,#06070a,#020203);
-  }
-  .perf__chart-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
-  .perf__chart-title{font-size:16px;color:var(--ink);letter-spacing:-0.01em}
-  .perf__chart-axis{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute)}
-  .bar{display:grid;grid-template-columns:140px 1fr 64px;align-items:center;gap:18px;margin-bottom:20px;font-family:var(--f-mono);font-size:13px}
-  .bar__lbl{color:var(--ink-dim)}
-  .bar__lbl strong{color:var(--ink);font-family:var(--f-sans);font-size:15px;letter-spacing:-0.005em;font-weight:500;display:block;margin-bottom:3px}
-  .bar__lbl span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute)}
-  .bar__track{height:14px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;position:relative}
-  .bar__fill{height:100%;width:0;border-radius:2px;transition:width 1.6s cubic-bezier(.2,.8,.2,1);position:relative}
-  .bar__fill::after{content:"";position:absolute;right:0;top:0;bottom:0;width:2px;background:currentColor;opacity:.5;box-shadow:0 0 12px currentColor}
-  .bar__val{font-variant-numeric:tabular-nums;color:var(--ink);text-align:right;font-size:15px;font-weight:500}
-  .bar--jax .bar__fill{background:linear-gradient(90deg,rgba(79,142,247,.55),var(--blue));color:var(--blue)}
-  .bar--tf  .bar__fill{background:linear-gradient(90deg,rgba(245,184,74,.35),rgba(245,184,74,.85));color:var(--amber)}
-  .bar--pt  .bar__fill{background:linear-gradient(90deg,rgba(255,90,95,.35),rgba(255,90,95,.85));color:var(--red)}
-
-  .perf__notes{font-size:13px;color:var(--ink-mute);margin-top:20px;font-family:var(--f-mono);letter-spacing:.02em;line-height:1.6}
-
-  .perf-callout{display:flex;flex-direction:column;gap:24px}
-  .perf-stat{
-    border-top:1px solid var(--line);padding-top:18px;
-  }
-  .perf-stat__num{font-family:var(--f-display);font-size:clamp(56px,7vw,96px);line-height:1;color:var(--blue);letter-spacing:-0.04em}
-  .perf-stat__lbl{font-size:15px;color:var(--ink-dim);margin-top:8px;max-width:36ch;line-height:1.55}
-
-  /* ─────────────────────────────  S8 — FAZIT  ───────────────────────────── */
-  #s8{min-height:100vh;justify-content:center}
-  .fazit{
-    margin-top:56px;display:grid;grid-template-columns:repeat(3,1fr);gap:32px;
-  }
-  .fazit__card{
-    padding:32px 28px;border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden;
-    display:flex;flex-direction:column;min-height:240px;
-    background:linear-gradient(180deg,rgba(255,255,255,.015),transparent);
-  }
-  .fazit__card::before{
-    content:"";position:absolute;left:0;top:0;width:2px;height:40px;background:var(--blue);
-    transition:height .9s cubic-bezier(.2,.8,.2,1) .2s;
-  }
-  .fazit__card.in::before{height:100%}
-  .fazit__num{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;color:var(--blue)}
-  .fazit__h{font-family:var(--f-display);font-size:38px;line-height:1.12;margin-top:14px;letter-spacing:-0.02em}
-  .fazit__h em{font-style:italic;color:var(--blue)}
-  .fazit__p{font-size:16px;color:var(--ink-dim);line-height:1.6;margin-top:auto;padding-top:20px}
-
-  /* ─────────────────────────────  S9 — SOURCES / CLOSE  ───────────────────────────── */
-  #s9{min-height:auto;padding-bottom:clamp(80px,12vh,140px)}
-  .sources{
-    margin-top:48px;display:grid;grid-template-columns:repeat(2,1fr);gap:0;
-    border-top:1px solid var(--line);
-  }
-  .source{
-    padding:22px 0;border-bottom:1px solid var(--line);
-    display:grid;grid-template-columns:64px 1fr auto;gap:24px;align-items:baseline;
-    font-size:16px;
-  }
-  .source:nth-child(odd){padding-right:32px;border-right:1px solid var(--line)}
-  .source:nth-child(even){padding-left:32px}
-  .source__num{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;color:var(--ink-mute)}
-  .source__title{color:var(--ink);line-height:1.45}
-  .source__title em{font-style:italic;color:var(--ink-dim);display:block;font-size:13px;margin-top:4px;font-family:var(--f-mono);letter-spacing:.02em}
-  .source__year{font-family:var(--f-mono);font-size:13px;color:var(--ink-mute)}
-
-  .closing{
-    margin-top:80px;display:flex;justify-content:space-between;align-items:flex-end;gap:40px;flex-wrap:wrap;
-  }
-  .closing__mark{font-family:var(--f-display);font-size:clamp(48px,6vw,96px);line-height:1;letter-spacing:-0.03em}
-  .closing__mark em{font-style:italic;color:var(--blue)}
-  .closing__meta{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);text-align:right;line-height:1.9}
-
-  /* ─────────────────────────────  RESPONSIVE  ───────────────────────────── */
-  @media (max-width:960px){
-    .hero__orbit{display:none}
-    .fragmentation,.fazit,.transforms{grid-template-columns:1fr}
-    .arch-hw{grid-template-columns:repeat(2,1fr)}
-    .arch-backends{grid-template-columns:1fr}
-    .arch__tier{grid-template-columns:1fr}
-    .arch__tier-label{text-align:left}
-    .code-grid,.usecase,.perf{grid-template-columns:1fr}
-    .compare-grid{grid-template-columns:1fr}
-    .compare-arrow{transform:rotate(90deg);justify-self:center;margin:8px 0}
-    .compare-stats{grid-template-columns:1fr}
-    .usecase-block{grid-template-columns:1fr;min-height:auto;gap:28px}
-    .usecase-viz-col{order:-1}
-    .jax-sticky-head{position:relative;top:0;background:transparent;backdrop-filter:none;border-bottom:0;margin:0;padding:0}
-    .sources{grid-template-columns:1fr}
-    .source:nth-child(even){padding-left:0;border-left:0}
-    .source:nth-child(odd){padding-right:0}
-    .nav{display:none}
-    .topbar__meta{display:none}
-    .timeline{grid-template-columns:80px 1fr}
-    .tl-year{padding-right:16px;font-size:12px}
-  }
-  @media (prefers-reduced-motion:reduce){
-    .reveal,.rule,.bar__fill,.fazit__card::before,.spin-slow,.spin-slow-rev{transition:none!important;animation:none!important}
-    .reveal{opacity:1;transform:none}
-    html{scroll-behavior:auto}
-  }
-
-  /* ════════════════════════════════════════════════════════════════
-     PRINT / PDF — Backup-Export für die Präsentation
-     16:9 Querformat · jede Section eine eigene PDF-Seite
-     ════════════════════════════════════════════════════════════════ */
-  @media print {
-    @page {
-      size: 297mm 167mm;  /* echtes 16:9 Querformat (Slide-Style) */
-      margin: 0;
-    }
-    html, body {
-      background: #000 !important;
-      color: #fff !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-      width: 297mm;
-      height: auto !important;
-      min-height: 0 !important;
-      overflow: visible !important;
-    }
-    /* Decorative Overlays + Background-Layer raus (sparen massiv PDF-Größe) */
-    .boot, .nav, .topbar, .progress { display: none !important; }
-    .parallax-bg, .ambient-glow, .vignette, .grain { display: none !important; }
-    canvas#tokenCanvas, canvas#starfield-bg, canvas.token-canvas, canvas.starfield-bg { display: none !important; }
-    /* Sticky-Header in Section 4 normal stellen */
-    .jax-sticky-head{
-      position: relative !important;
-      top: auto !important;
-      background: transparent !important;
-      backdrop-filter: none !important;
-      border-bottom: 0 !important;
-      mask-image: none !important;
-      -webkit-mask-image: none !important;
-    }
-    .reveal{ opacity: 1 !important; transform: none !important; }
-    /* Sections: jede Section ist eine PDF-Seite, kompaktes Layout */
-    section{
-      page-break-before: always !important;
-      break-before: page !important;
-      padding: 13mm 18mm !important;
-      min-height: 0 !important;
-      height: auto !important;
-      max-width: 100% !important;
-      width: 100% !important;
-      margin: 0 !important;
-      box-sizing: border-box !important;
-      justify-content: flex-start !important;
-    }
-    section:first-of-type{
-      page-break-before: auto !important;
-      break-before: auto !important;
-    }
-    /* Schriften kompakter für Print — alles soll auf 167mm passen */
-    section h1{ font-size: 50px !important; line-height: 1.05 !important; margin-top: 14px !important; }
-    section h2{ font-size: 40px !important; line-height: 1.08 !important; margin-top: 10px !important; }
-    section h3{ font-size: 28px !important; line-height: 1.12 !important; }
-    .lead, .hero__sub, p.lead, p.body { font-size: 13.5px !important; line-height: 1.5 !important; max-width: 64ch !important; }
-    .hero__sub{ margin-top: 16px !important; max-width: 56ch !important; }
-    .hero__tagline{ margin-top: 14px !important; }
-    .hero__byline{ margin-top: 18px !important; }
-    /* Hero-Orbit explizit sichtbar (max-width:960px-Regel würde sonst greifen) */
-    .hero__orbit{
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      width: 30% !important;
-      max-width: 280px !important;
-      right: 6% !important;
-      top: 50% !important;
-      transform: translateY(-50%) !important;
-    }
-    .hero__orbit-svg{
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      width: 100% !important;
-      height: 100% !important;
-    }
-    /* 3D-Canvas-Container im Orbit ausblenden — SVG ist die Print-Version */
-    .hero__orbit-canvas{ display: none !important; }
-    /* SVG-Inhalt sichtbar */
-    .hero__orbit svg, .hero__orbit svg *{ visibility: visible !important; opacity: 1 !important; }
-    /* Innerhalb von Sections: harte Block-Elemente nicht trennen */
-    h1, h2, h3, .compare-stat, .perf, .fazit__card,
-    .hw-compare > div, .timeline-row{
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    /* Animationen einfrieren */
-    *, *::before, *::after{
-      animation-duration: 0.001s !important;
-      animation-delay: 0s !important;
-      transition-duration: 0.001s !important;
-    }
-    /* Hero-Orbit-Spinner: NICHT auf End-State springen (sonst werden die Satelliten 0.29× klein),
-       sondern komplett deaktivieren — Satelliten bleiben in Original-Orbit-Positionen */
-    .spin-slow, .spin-slow-rev{
-      animation: none !important;
-      transform: none !important;
-    }
-    /* 3D-Hintergrund-Canvases im Print sichtbar machen */
-    .hw-card__3d-bg{ opacity: 1 !important; }
-    /* Side-Annotations entfernen */
-    [class*="side-anno"], [class*="aside-label"]{ display: none !important; }
-    /* Fluid-Sim-Canvas wird ohne Animation zur schwarzen Box — durch Hint-Box ersetzen */
-    canvas#fluidCanvas, canvas#bayesCanvas{ display: none !important; }
-    .canvas-toggle{ display: none !important; }
-    .usecase-block__viz{
-      background: linear-gradient(135deg, rgba(79,142,247,.12), rgba(15,15,22,.6)) !important;
-      border: 1px solid rgba(79,142,247,.3) !important;
-      border-radius: 6px !important;
-      min-height: 100mm !important;
-      max-height: 110mm !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      position: relative !important;
-    }
-    .usecase-block__viz::after{
-      content: "▸  LIVE-DEMO IM BROWSER" !important;
-      color: rgba(79,142,247,.55) !important;
-      font-family: "JetBrains Mono", monospace !important;
-      font-size: 13px !important;
-      letter-spacing: .2em !important;
-      text-transform: uppercase !important;
-    }
-
+  :root {
+    --bg: #f3ede2;
+    --bg-2: #ece4d4;
+    --ink: #1a1f2e;
+    --ink-soft: #2a3142;
+    --muted: #6b6356;
+    --line: #d8cdb8;
+    --paper: #faf6ee;
+    --indigo: #3a4cd6;
+    --indigo-deep: #2535a8;
+    --amber: #c8862a;
+    --crimson: #b54338;
+    --green: #4a7c3f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image: linear-gradient(180deg, #f3ede2 0%, #ece4d4 50%, #ebe2cf 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(24px, 5vw, 64px);
+  }
+  header {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding-bottom: clamp(36px, 6vh, 64px);
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--indigo);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "§";
+    font-family: 'DM Serif Display', Georgia, serif;
+    color: var(--amber);
+    font-style: italic;
+    font-size: 22px;
+  }
+  h1 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(42px, 6vw, 88px);
+    font-weight: 400;
+    line-height: 1.05;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  h1 em { font-style: italic; color: var(--indigo); }
+  header p {
+    font-size: clamp(17px, 1.4vw, 21px);
+    color: var(--ink-soft);
+    max-width: 60ch;
+    line-height: 1.55;
+  }
+  main {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: clamp(36px, 6vh, 64px) 0 clamp(36px, 6vh, 64px);
+    flex: 1;
+  }
+  .talks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: clamp(20px, 2.4vw, 32px);
+  }
+  .talk {
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: clamp(24px, 2.4vw, 36px);
+    text-decoration: none;
+    color: var(--ink);
+    transition: transform 0.25s cubic-bezier(0.2,0.8,0.2,1), border-color 0.25s ease, box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    min-height: 320px;
+  }
+  .talk::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--indigo), var(--amber));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .talk:hover {
+    transform: translateY(-4px);
+    border-color: var(--indigo);
+    box-shadow: 0 16px 40px -12px rgba(58, 76, 214, 0.18);
+  }
+  .talk:hover::before { opacity: 1; }
+  .talk-num {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    margin-bottom: 16px;
+  }
+  .talk-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(28px, 2.6vw, 40px);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  .talk-title em { font-style: italic; color: var(--indigo); }
+  .talk-sub {
+    font-size: 16px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin-bottom: 24px;
+    flex: 1;
+  }
+  .talk-meta {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding-top: 20px;
+    border-top: 1px dashed var(--line);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .talk-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .talk-cta {
+    margin-top: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--indigo);
+    letter-spacing: 0.06em;
+    transition: gap 0.2s ease;
+  }
+  .talk:hover .talk-cta { gap: 16px; }
+  .talk-cta::after {
+    content: "→";
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 18px;
+    transition: transform 0.2s ease;
+  }
+  footer {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding-top: clamp(24px, 4vh, 40px);
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  footer a { color: var(--indigo); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 
-<!-- BOOT SCREEN -->
-<div class="boot" id="boot">
-  <div class="boot__inner">
-    <div class="boot__head">Initialising runtime</div>
-    <div class="boot__lines" id="bootLines"></div>
-    <div class="boot__progress"><div class="boot__progress-bar"></div></div>
-    <div class="boot__foot"><span>keras 3.0 · jax · xla</span><span>boot sequence</span></div>
-  </div>
-</div>
-
-<!-- PARALLAX BG -->
-<div class="parallax-bg" id="parallaxBg" aria-hidden="true">
-  <svg viewBox="0 0 1200 2400" preserveAspectRatio="xMidYMid slice">
-    <defs>
-      <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
-        <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#4f8ef7" stroke-width="0.5"/>
-      </pattern>
-    </defs>
-    <rect width="1200" height="2400" fill="url(#grid)"/>
-  </svg>
-</div>
-
-<!-- STARFIELD — subtile Twinkle-Dots, immer sichtbar über gesamter Präsentation -->
-<canvas id="starfield-bg" class="starfield-bg" aria-hidden="true"></canvas>
-
-<div class="ambient-glow" id="glow"></div>
-<div class="vignette"></div>
-<div class="grain"></div>
-
-<!-- PROGRESS -->
-<div class="progress"><div class="progress__bar" id="progressBar"></div></div>
-
-<!-- TOPBAR -->
-<header class="topbar">
-  <div class="topbar__brand"><span class="dot"></span><span>BTU Cottbus · Angewante Modellierung und Systemsimulation</span></div>
-  <div class="topbar__meta">
-    <span>April 2026</span>
-    <span class="counter"><span id="curSec">01</span> / 07</span>
-  </div>
+<header>
+  <div class="eyebrow">Vortragsreihe</div>
+  <h1>Angewandte Modellierung &amp;<br/><em>Systemsimulation.</em></h1>
+  <p>Lightning-Talks aus dem Modul. Jeder ungefähr fünf Minuten, eine Kernidee, ein Aha-Moment. Wähle einen Vortrag.</p>
 </header>
 
-<!-- NAV DOTS -->
-<nav class="nav" id="nav" aria-label="Sektionen">
-  <button data-target="s1" aria-current="true"><span class="nav__label">Titel</span></button>
-  <button data-target="s2"><span class="nav__label">Geschichte &amp; Problem</span></button>
-  <button data-target="s3"><span class="nav__label">Keras 3</span></button>
-  <button data-target="s4"><span class="nav__label">JAX für Simulationen</span></button>
-  <button data-target="s5"><span class="nav__label">Hardware · XLA</span></button>
-  <button data-target="s6"><span class="nav__label">Fazit</span></button>
-  <button data-target="s7"><span class="nav__label">Quellen &amp; Fragen</span></button>
-</nav>
-
 <main>
+  <div class="talks">
 
-<!-- ═══════════════ S1 — TITLE ═══════════════ -->
-<section id="s1" data-label="Titel">
-  <canvas class="token-canvas" id="tokenCanvas" aria-hidden="true"></canvas>
-  <div class="reveal" data-delay="0"><span class="eyebrow">Vortrag · 5 Minuten</span></div>
-  <h1 class="reveal" data-delay="1" style="margin-top:20px">
-    Keras&nbsp;3 &amp;<br/>das <em>Multi-Backend</em><br/>Paradigma.
-  </h1>
-  <p class="hero__sub reveal" data-delay="3">
-    Zwei Fragen: <em style="font-style:italic;color:var(--blue)">Was</em> hat Keras 3 im KI-Ökosystem verändert?
-    Und <em style="font-style:italic;color:var(--blue)">welchen Vorteil</em> bringt das für physikalische Simulationen:
-    Wetter, Strömungen, alles wo Physik mitrechnen muss.
-  </p>
-  <div class="hero__tagline reveal" data-delay="4">
-    <span class="chip chip--blue">JAX</span>
-    <span class="chip">XLA</span>
-    <span class="chip">TPU</span>
-    <span class="chip">jit() · grad() · vmap() · pmap()</span>
-    <span class="chip">PINN</span>
+    <a href="Vortrag1/" class="talk">
+      <div class="talk-num">01</div>
+      <h2 class="talk-title">Keras 3 als <em>Game-Changer</em></h2>
+      <p class="talk-sub">Ein Code, drei Backends. Wie Keras 3 die Lock-in-Frage zwischen TensorFlow, PyTorch und JAX auflöst und warum JAX mit XLA auf TPU der schnellste Weg in die Physik-Simulation ist.</p>
+      <div class="talk-meta">
+        <span>April 2026</span>
+        <span>~5 Min</span>
+        <span>Keras · JAX · XLA</span>
+      </div>
+      <span class="talk-cta">Vortrag öffnen</span>
+    </a>
+
+    <a href="Vortrag2/" class="talk">
+      <div class="talk-num">02</div>
+      <h2 class="talk-title">Zustandslos <em>skalieren</em></h2>
+      <p class="talk-sub">Der funktionale Paradigmenwechsel von Keras zu Flax. Pure Functions, PRNGKeys, init / apply, PyTree und ein 3D-Determinismus-Beweis nebeneinander.</p>
+      <div class="talk-meta">
+        <span>Mai 2026</span>
+        <span>~5 Min</span>
+        <span>JAX · Flax · Pure Functions</span>
+      </div>
+      <span class="talk-cta">Vortrag öffnen</span>
+    </a>
+
   </div>
-
-  <div class="hero__byline reveal" data-delay="5">
-    <span class="hero__byline-label">Vortragender</span>
-    <span class="hero__byline-name">Max</span>
-    <span class="hero__byline-meta">BTU Cottbus · April 2026</span>
-  </div>
-
-  <div class="hero__orbit reveal" data-delay="2" aria-hidden="true">
-    <svg class="hero__orbit-svg" viewBox="-250 -250 500 500">
-      <!-- Statische Ringe — bleiben als visueller Rahmen sichtbar -->
-      <circle class="ring" r="240" />
-      <circle class="ring ring--dashed" r="240" transform="rotate(15)"/>
-      <circle class="ring" r="170" />
-      <circle class="ring" r="110" />
-
-      <!-- JAX-Satellit rotiert auf r=170-Bahn, konvergiert dann auf Keras-Kreis (scale 0.29) -->
-      <g class="spin-slow" style="--end-scale:0.29;--dot-compensate:3.45">
-        <circle class="node" r="5" cx="170" cy="0"/>
-        <text class="label" x="180" y="4">JAX</text>
-      </g>
-      <!-- TF + PyTorch rotieren auf r=110-Bahn (gegensinn), konvergieren auf Keras-Kreis (scale 0.45) -->
-      <g class="spin-slow-rev" style="--end-scale:0.45;--dot-compensate:2.22">
-        <circle class="node" r="4" cx="0" cy="-110" style="fill:#f5b84a"/>
-        <text class="label" x="-18" y="-118" style="fill:#f5b84a">TF</text>
-        <circle class="node" r="4" cx="-95" cy="55" style="fill:#ff5a5f"/>
-        <text class="label" x="-130" y="72" style="fill:#ff5a5f">PyTorch</text>
-      </g>
-      <g>
-        <circle r="50" fill="#000" stroke="rgba(79,142,247,.5)"/>
-        <text class="label" text-anchor="middle" y="-2" style="fill:#fff;font-family:var(--f-display);font-size:18px;letter-spacing:-0.02em">Keras</text>
-        <text class="label" text-anchor="middle" y="14" style="fill:var(--blue)">3.0</text>
-      </g>
-      <!-- radial spokes -->
-      <g stroke="rgba(79,142,247,.2)" stroke-width=".5">
-        <line x1="50" y1="0" x2="170" y2="0"/>
-        <line x1="0" y1="-50" x2="0" y2="-110"/>
-        <line x1="-43" y1="25" x2="-95" y2="55"/>
-      </g>
-    </svg>
-  </div>
-
-</section>
-
-<!-- ═══════════════ S2 — GESCHICHTE & PROBLEM ═══════════════ -->
-<section id="s2" data-label="Geschichte-Problem">
-  <div class="reveal"><span class="eyebrow eyebrow--mono">§ 02 — Geschichte &amp; Problem</span></div>
-  <h2 class="reveal" data-delay="1" style="margin-top:16px;max-width:16ch">
-    Drei Frameworks. <em>Acht Jahre</em> nebeneinander her.
-  </h2>
-  <p class="lead reveal" data-delay="2" style="margin-top:24px">
-    Zwischen 2015 und 2023 entstehen drei große KI-Frameworks: TensorFlow, PyTorch und JAX.
-    Jedes spricht seine eigene Sprache. Wer zwischen ihnen wechseln will, schreibt Code neu.
-    Bis Keras 3 kommt und alle drei unter einen Hut bringt.
-  </p>
-
-  <div class="timeline" aria-label="Timeline der Frameworks">
-    <div class="timeline__axis" aria-hidden="true"></div>
-
-    <div class="tl-row">
-      <div class="tl-year reveal" data-delay="1">März 2015</div>
-      <div class="tl-card reveal" data-delay="1">
-        <div class="tl-card__head">
-          <span class="tl-card__stack tl-stack--keras">Keras</span>
-        </div>
-        <div class="tl-card__title">Die Geburt von Keras</div>
-        <div class="tl-card__body">Der französische Entwickler <em>François Chollet</em> veröffentlicht Keras. Wenige Monate später wechselt er zu Google. Ziel von Anfang an: neuronale Netze bauen soll so einfach wie möglich sein, egal welches Deep-Learning-Framework dahinter läuft.</div>
-      </div>
-    </div>
-
-    <div class="tl-row">
-      <div class="tl-year reveal" data-delay="2">Nov 2015</div>
-      <div class="tl-card reveal" data-delay="2">
-        <div class="tl-card__head">
-          <span class="tl-card__stack tl-stack--tf">TensorFlow</span>
-        </div>
-        <div class="tl-card__title">Googles Antwort: schnell, aber starr</div>
-        <div class="tl-card__body">Google bringt TensorFlow heraus. Man muss das ganze Modell erst fertig bauen, dann läuft es. Schnell und industrie-tauglich, aber schwer zu testen und anzupassen.</div>
-      </div>
-    </div>
-
-    <div class="tl-row">
-      <div class="tl-year reveal" data-delay="3">2016</div>
-      <div class="tl-card reveal" data-delay="3">
-        <div class="tl-card__head">
-          <span class="tl-card__stack tl-stack--pt">PyTorch</span>
-        </div>
-        <div class="tl-card__title">Facebooks Antwort: wie normales Python</div>
-        <div class="tl-card__body">Facebook (heute Meta) veröffentlicht PyTorch als Antwort auf das sperrige TensorFlow. Code wird Zeile für Zeile ausgeführt, ganz wie normales Python. Die Forschung wechselt nach und nach dorthin.</div>
-      </div>
-    </div>
-
-    <div class="tl-row">
-      <div class="tl-year reveal" data-delay="4">2018</div>
-      <div class="tl-card reveal" data-delay="4">
-        <div class="tl-card__head">
-          <span class="tl-card__stack tl-stack--jax">JAX</span>
-        </div>
-        <div class="tl-card__title">Massiv parallel, funktional, skalierbar</div>
-        <div class="tl-card__body">Google Research veröffentlicht JAX. Idee: Funktionen werden <em>funktional</em> geschrieben und laufen dann massiv parallel auf Hardware-Clustern. Der Preis: man muss anders programmieren. Der Gewinn: skaliert fast beliebig.</div>
-      </div>
-    </div>
-
-    <div class="tl-row">
-      <div class="tl-year reveal" data-delay="5">Sep 2019</div>
-      <div class="tl-card reveal" data-delay="5">
-        <div class="tl-card__head">
-          <span class="tl-card__stack tl-stack--tf">TF 2.x</span>
-          <span class="tl-card__stack tl-stack--keras">Keras</span>
-        </div>
-        <div class="tl-card__title">Keras wird an TensorFlow gekettet</div>
-        <div class="tl-card__body">TensorFlow 2 wird einfacher zu bedienen und bindet Keras fest als <code style="font-family:var(--f-mono);font-size:.85em">tf.keras</code> ein. Vier Jahre lang ist Keras quasi nur noch mit TensorFlow nutzbar. Die ursprüngliche Idee, mehrere Deep-Learning-Frameworks zuzulassen, verschwindet.</div>
-      </div>
-    </div>
-
-    <div class="tl-row">
-      <div class="tl-year reveal" data-delay="6">Ende 2023</div>
-      <div class="tl-card reveal" data-delay="6">
-        <div class="tl-card__head">
-          <span class="tl-card__stack tl-stack--keras">Keras 3.0</span>
-        </div>
-        <div class="tl-card__title">Keras 3: neu gedacht</div>
-        <div class="tl-card__body">Keras wird komplett neu gebaut. Eine Datei, drei Deep-Learning-Frameworks zur Auswahl: <em>TensorFlow</em>, <em>PyTorch</em> oder <em>JAX</em>, umschaltbar mit einem einzigen Befehl. Die Trennung zwischen den Welten ist vorbei.</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="fragmentation reveal" data-delay="6">
-    <div class="frag frag--tf">
-      <div>
-        <div class="frag__name">Stack A</div>
-        <div class="frag__title">TensorFlow</div>
-      </div>
-      <div class="frag__pain">Stark in Produktion und großen Systemen, aber sperrig im Alltag.</div>
-      <div class="frag__tags">
-        <span class="frag__tag">tf.Tensor</span>
-        <span class="frag__tag">tf.GradientTape</span>
-        <span class="frag__tag">SavedModel</span>
-      </div>
-    </div>
-    <div class="frag frag--pt">
-      <div>
-        <div class="frag__name">Stack B</div>
-        <div class="frag__title">PyTorch</div>
-      </div>
-      <div class="frag__pain">Der Liebling der Forschung, aber auf TPU und beim Kompilieren schwach.</div>
-      <div class="frag__tags">
-        <span class="frag__tag">torch.Tensor</span>
-        <span class="frag__tag">autograd</span>
-        <span class="frag__tag">torchscript</span>
-      </div>
-    </div>
-    <div class="frag frag--jax">
-      <div>
-        <div class="frag__name">Stack C</div>
-        <div class="frag__title">JAX</div>
-      </div>
-      <div class="frag__pain">Extrem skalierbar auf TPU, mathematisch elegant, aber anspruchsvoll im Einstieg.</div>
-      <div class="frag__tags">
-        <span class="frag__tag">jax.Array</span>
-        <span class="frag__tag">grad / vmap</span>
-        <span class="frag__tag">pjit</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ S3 — KERAS 3 (Arch + Code) ═══════════════ -->
-<section id="s3" data-label="Keras-3">
-  <div class="reveal"><span class="eyebrow eyebrow--mono">§ 03 — Keras 3 · Multi-Backend</span></div>
-  <h2 class="reveal" data-delay="1" style="margin-top:16px;max-width:18ch">
-    Ein API. <em>Drei</em> Backends.<br/>Derselbe Code.
-  </h2>
-  <p class="lead reveal" data-delay="2" style="margin-top:24px">
-    Keras 3 wurde 2023 komplett neu gebaut. Es ist nur noch die <em>Bedien-Schicht</em>. Darunter arbeitet der Deep-Learning-Framework,
-    den du aussuchst: TensorFlow, PyTorch oder JAX. Dein Modell-Code bleibt dabei immer gleich.
-  </p>
-
-  <div class="arch" aria-label="Architektur-Diagramm">
-    <div class="arch__tier reveal" data-delay="2">
-      <div class="arch__tier-label">Ebene 1<br/>Was du bedienst</div>
-      <div class="arch-api">
-        <div class="arch-api__title"><em style="font-style:italic;color:var(--blue)">keras</em></div>
-        <div class="arch-api__desc">Die Bedien-Schicht. Hier baust du dein Modell, immer gleich, egal welcher Motor unten läuft.</div>
-        <div class="arch-api__methods">
-          <span>keras.layers.Dense</span>
-          <span>keras.Model</span>
-          <span>keras.ops.matmul</span>
-          <span>model.fit()</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="arch-conn" id="archConn" aria-hidden="true">
-      <svg viewBox="0 0 800 60" preserveAspectRatio="none">
-        <path d="M 400 0 C 400 30, 130 30, 130 60"/>
-        <path d="M 400 0 C 400 30, 400 30, 400 60" class="active"/>
-        <path d="M 400 0 C 400 30, 670 30, 670 60"/>
-      </svg>
-    </div>
-
-    <div class="arch__tier reveal" data-delay="3">
-      <div class="arch__tier-label">Ebene 2<br/>Motor deiner Wahl</div>
-      <div class="arch-backends">
-        <div class="arch-backend">
-          <div class="arch-backend__name">TensorFlow</div>
-          <div class="arch-backend__note">Produktion · Serving</div>
-        </div>
-        <div class="arch-backend hl">
-          <div class="arch-backend__name">JAX</div>
-          <div class="arch-backend__note">Wissenschaft · TPU · Skalierung</div>
-          <div class="arch-backend__badge">Empfohlen</div>
-        </div>
-        <div class="arch-backend">
-          <div class="arch-backend__name">PyTorch</div>
-          <div class="arch-backend__note">Forschung · Community</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="arch__tier reveal" data-delay="4">
-      <div class="arch__tier-label">Ebene 3<br/>Hardware</div>
-      <div class="arch-hw">
-        <div class="arch-hw__chip"><strong>CPU</strong><em>Standard</em></div>
-        <div class="arch-hw__chip"><strong>GPU</strong><em>NVIDIA · AMD</em></div>
-        <div class="arch-hw__chip"><strong>TPU</strong><em>Google</em></div>
-        <div class="arch-hw__chip"><strong>Apple</strong><em>Silicon</em></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="rule reveal" data-delay="6" style="margin-top:72px"></div>
-
-  <!-- ── Sub-Part: Backend-Switch in der Praxis ── -->
-  <div class="reveal" data-delay="7" style="margin-top:40px">
-    <span class="eyebrow eyebrow--mono">§ 03 · b — Backend-Switch in der Praxis</span>
-  </div>
-  <h3 class="reveal" data-delay="7" style="margin-top:18px;max-width:22ch;font-family:var(--f-display);font-size:clamp(30px,4vw,52px);font-weight:400;line-height:1.08;letter-spacing:-0.02em">
-    Eine <em style="font-style:italic;color:var(--blue)">Umgebungs&shy;variable</em> entscheidet.
-  </h3>
-  <p class="body reveal" data-delay="8" style="margin-top:20px;max-width:64ch">
-    Der Trick heißt <code style="font-family:var(--f-mono);color:var(--blue)">keras.ops</code>: jede Rechen-Operation läuft über
-    eine einheitliche Schicht, die im Hintergrund das ausgewählte Deep-Learning-Framework anspricht.
-    <code style="font-family:var(--f-mono);color:var(--blue)">KERAS_BACKEND</code> ist <em>eine</em> Zeile Code. Der Rest bleibt identisch.
-  </p>
-
-  <div class="env-line reveal" data-delay="3">
-    <span><span class="tk-kw">export</span> <span class="tk-var">KERAS_BACKEND</span>=<span class="tk-str">"jax"</span>&nbsp;&nbsp;<span class="tk-com"># oder "tensorflow" · "torch"</span></span>
-  </div>
-
-  <div class="compare-grid" id="compareGrid">
-    <!-- Linke Seite: Ohne Keras 3 -->
-    <div class="compare-side compare-side--before reveal" data-delay="3">
-      <div class="compare-label">Ohne Keras 3</div>
-      <div class="compare-title">Drei Frameworks, drei <em>Dialekte</em>.</div>
-
-      <div class="compare-tabs">
-        <button class="compare-tab-btn" data-target="before-tf" aria-selected="true">TensorFlow</button>
-        <button class="compare-tab-btn" data-target="before-pt" aria-selected="false">PyTorch</button>
-        <button class="compare-tab-btn" data-target="before-jax" aria-selected="false">JAX · Flax</button>
-      </div>
-
-      <div class="compare-stage">
-        <div class="compare-snippet compare-snippet--tf is-active" id="before-tf">
-          <div class="compare-snippet__head">TensorFlow · tf.Module</div>
-<pre><span class="tk-kw">import</span> tensorflow <span class="tk-kw">as</span> tf
-
-<span class="tk-kw">class</span> <span class="tk-cls">Net</span>(tf.Module):
-  <span class="tk-kw">def</span> <span class="tk-fn">__init__</span>(self):
-    self.W1 = tf.<span class="tk-fn">Variable</span>(tf.random.<span class="tk-fn">normal</span>([<span class="tk-num">2</span>,<span class="tk-num">64</span>]))
-    self.W2 = tf.<span class="tk-fn">Variable</span>(tf.random.<span class="tk-fn">normal</span>([<span class="tk-num">64</span>,<span class="tk-num">1</span>]))
-  <span class="tk-kw">def</span> <span class="tk-fn">__call__</span>(self, x):
-    h = tf.nn.<span class="tk-fn">tanh</span>(x @ self.W1)
-    <span class="tk-kw">return</span> h @ self.W2</pre>
-        </div>
-
-        <div class="compare-snippet compare-snippet--pt" id="before-pt">
-          <div class="compare-snippet__head">PyTorch · nn.Module</div>
-<pre><span class="tk-kw">import</span> torch
-<span class="tk-kw">import</span> torch.nn <span class="tk-kw">as</span> nn
-
-<span class="tk-kw">class</span> <span class="tk-cls">Net</span>(nn.Module):
-  <span class="tk-kw">def</span> <span class="tk-fn">__init__</span>(self):
-    <span class="tk-fn">super</span>().<span class="tk-fn">__init__</span>()
-    self.fc1 = nn.<span class="tk-fn">Linear</span>(<span class="tk-num">2</span>, <span class="tk-num">64</span>)
-    self.fc2 = nn.<span class="tk-fn">Linear</span>(<span class="tk-num">64</span>, <span class="tk-num">1</span>)
-  <span class="tk-kw">def</span> <span class="tk-fn">forward</span>(self, x):
-    <span class="tk-kw">return</span> self.<span class="tk-fn">fc2</span>(torch.<span class="tk-fn">tanh</span>(self.<span class="tk-fn">fc1</span>(x)))</pre>
-        </div>
-
-        <div class="compare-snippet compare-snippet--jax" id="before-jax">
-          <div class="compare-snippet__head">JAX · Flax · linen</div>
-<pre><span class="tk-kw">import</span> jax.numpy <span class="tk-kw">as</span> jnp
-<span class="tk-kw">from</span> flax <span class="tk-kw">import</span> linen <span class="tk-kw">as</span> nn
-
-<span class="tk-kw">class</span> <span class="tk-cls">Net</span>(nn.Module):
-  @nn.compact
-  <span class="tk-kw">def</span> <span class="tk-fn">__call__</span>(self, x):
-    x = nn.<span class="tk-fn">tanh</span>(nn.<span class="tk-fn">Dense</span>(<span class="tk-num">64</span>)(x))
-    <span class="tk-kw">return</span> nn.<span class="tk-fn">Dense</span>(<span class="tk-num">1</span>)(x)</pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pfeil-Divider -->
-    <div class="compare-arrow reveal" data-delay="3" aria-hidden="true">→</div>
-
-    <!-- Rechte Seite: Mit Keras 3 -->
-    <div class="compare-side compare-side--after reveal" data-delay="4">
-      <div class="compare-label">Mit Keras 3</div>
-      <div class="compare-title">Ein Code. <em>Drei</em> Backends.</div>
-
-      <div class="compare-snippet compare-snippet--keras">
-        <div class="compare-snippet__head">keras · egal welches Backend</div>
-<pre><span class="tk-kw">import</span> keras
-<span class="tk-kw">from</span> keras <span class="tk-kw">import</span> layers
-
-model = keras.<span class="tk-fn">Sequential</span>([
-    layers.<span class="tk-fn">Dense</span>(<span class="tk-num">64</span>, activation=<span class="tk-str">"tanh"</span>),
-    layers.<span class="tk-fn">Dense</span>(<span class="tk-num">1</span>),
-])
-
-model.<span class="tk-fn">compile</span>(optimizer=<span class="tk-str">"adamw"</span>, loss=physics_loss)
-model.<span class="tk-fn">fit</span>(X, y, epochs=<span class="tk-num">500</span>)</pre>
-      </div>
-
-      <div class="compare-note">
-        Dieser <em>eine</em> Block läuft gleich, egal ob <code>KERAS_BACKEND</code> auf
-        <code>tensorflow</code>, <code>torch</code> oder <code>jax</code> steht. Das Modell bleibt identisch, nur der Deep-Learning-Framework dahinter wechselt.
-      </div>
-    </div>
-  </div>
-
-  <!-- Kontrast-Streifen: konkrete Vorteile in Zahlen -->
-  <div class="compare-stats reveal" data-delay="5">
-    <div class="compare-stat">
-      <div class="compare-stat__lbl">Code-Länge</div>
-      <div class="compare-stat__val"><em>~3×</em> kürzer</div>
-      <div class="compare-stat__sub">8 Zeilen statt 24 · weniger Boilerplate</div>
-    </div>
-    <div class="compare-stat">
-      <div class="compare-stat__lbl">Portabilität</div>
-      <div class="compare-stat__val"><em>3</em> Backends</div>
-      <div class="compare-stat__sub">TensorFlow · PyTorch · JAX, alle aus einer Datei</div>
-    </div>
-    <div class="compare-stat">
-      <div class="compare-stat__lbl">Beim Backend-Wechsel</div>
-      <div class="compare-stat__val"><em>0</em> Zeilen</div>
-      <div class="compare-stat__sub">am Modell zu ändern · nur die Umgebungsvariable</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ S4 — JAX FÜR SIMULATIONEN (Sticky-Head + 2 Use-Cases) ═══════════════ -->
-<section id="s4" data-label="JAX-Simulationen">
-  <!-- Sticky Head: bleibt oben während man durch die Use-Cases scrollt -->
-  <div class="jax-sticky-head">
-    <div class="reveal"><span class="eyebrow eyebrow--mono">§ 04 — JAX für Simulationen</span></div>
-    <h2 class="reveal" data-delay="1" style="max-width:18ch">
-      Warum JAX für <em>Physik</em> so passt.
-    </h2>
-  </div>
-
-  <p class="lead reveal" data-delay="2" style="margin-top:24px">
-    Physik muss Naturgesetze einhalten, und dafür braucht man <em>Ableitungen</em>. Hier kommen zwei Werkzeuge ins Spiel:
-    <em>JAX</em> übernimmt die Mathe, <em>XLA</em> übernimmt die Geschwindigkeit.
-  </p>
-
-  <!-- Zwei-Karten-Explainer: Was ist JAX, was ist XLA -->
-  <div class="jax-xla-intro reveal" data-delay="3">
-    <div class="jax-xla-intro__card">
-      <div class="jax-xla-intro__label">JAX</div>
-      <div class="jax-xla-intro__tagline">Die Mathe-Bibliothek</div>
-      <div class="jax-xla-intro__desc">
-        Python-Werkzeug von Google. Der Trick: Sie kann jede Funktion <em>automatisch ableiten</em>, ohne
-        dass du die Ableitung selbst hinschreiben musst. Genau das ist das Herzstück für Physik-Simulationen.
-      </div>
-    </div>
-    <div class="jax-xla-intro__card">
-      <div class="jax-xla-intro__label">XLA</div>
-      <div class="jax-xla-intro__tagline">Der Hardware-Compiler</div>
-      <div class="jax-xla-intro__desc">
-        Ein Übersetzer, auch von Google. Er nimmt den JAX-Code und macht daraus <em>hardware-optimierten</em>
-        Maschinen-Code, der auf TPUs und GPUs richtig Tempo aufnimmt. Das ist der Grund, warum JAX so schnell ist.
-      </div>
-    </div>
-  </div>
-
-  <p class="body reveal" data-delay="4" style="margin-top:20px;max-width:66ch">
-    Zusammen: Du schreibst ganz normales Python, am Ende läuft es auf spezieller Hardware und hält gleichzeitig die Physik ein.
-  </p>
-
-  <!-- ── Use Case 01: PINN + live Fluid-Simulation ── -->
-  <div class="usecase-block reveal" data-delay="1">
-    <div class="usecase-block__text">
-      <span class="eyebrow eyebrow--mono">Use Case 01 · PINNs</span>
-      <h3 class="usecase-block__h">Echte Physik durchs <em>Netz</em>.</h3>
-      <p class="usecase-block__body">
-        <em>Physics-Informed Neural Networks</em> lernen so, dass sie eine physikalische Gleichung erfüllen,
-        zum Beispiel die Strömungsgleichung rechts. Vorteil: Du löst komplexe Physik-Probleme ohne klassisches
-        Rechengitter. Gerade bei schwierigen Strömungen wie dem Wetter
-        spart das massiv Aufwand.
-      </p>
-      <div class="usecase-block__points">
-        <div class="usecase-point">
-          <div class="usecase-point__num">01</div>
-          <div><strong>Ableiten ist das Herzstück.</strong> JAX' <code>grad</code> liefert die Ableitungen durchs Netz, automatisch mit einer Zeile.</div>
-        </div>
-        <div class="usecase-point">
-          <div class="usecase-point__num">02</div>
-          <div><strong>Rechenleistung + Naturgesetze.</strong> XLA optimiert für TPU und GPU, das Netz darf riesig werden.</div>
-        </div>
-      </div>
-    </div>
-    <div class="usecase-viz-col">
-      <div class="usecase-block__viz">
-        <canvas id="fluidCanvas" aria-hidden="true"></canvas>
-        <button class="canvas-toggle" data-state="playing" data-target="fluidCanvas" aria-label="Animation pausieren" title="Animation pausieren / starten">
-          <svg class="ico-pause" viewBox="0 0 10 10" aria-hidden="true"><rect x="2" y="1.5" width="2" height="7" rx="0.5"/><rect x="6" y="1.5" width="2" height="7" rx="0.5"/></svg>
-          <svg class="ico-play" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5 L8.5 5 L2.5 8.5 Z"/></svg>
-        </button>
-      </div>
-      <div class="usecase-canvas-caption">
-        <span class="usecase-canvas-caption__eq">∂u/∂t + (u·∇)u = −∇p/ρ + ν∇²u</span>
-        <span class="usecase-canvas-caption__lbl">Navier-Stokes · Echtzeit-Flow</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ====================================================================
-       Use Case 02 · BayesFlow — AUSKOMMENTIERT für 5-Min-Vortrag.
-       Falls Max beim Üben schneller wird: den nachstehenden Block-Kommentar
-       entfernen (also das "<​!--" über <div class="usecase-block"...> und
-       das "-​->" unter dem schließenden </div>) — dann rendert der
-       BayesFlow-Use-Case wieder.
-  ==================================================================== -->
-  <!--
-  <div class="usecase-block reveal" data-delay="1">
-    <div class="usecase-viz-col">
-      <div class="usecase-block__viz">
-        <canvas id="bayesCanvas" aria-hidden="true"></canvas>
-        <button class="canvas-toggle" data-state="playing" data-target="bayesCanvas" aria-label="Animation pausieren" title="Animation pausieren / starten">
-          <svg class="ico-pause" viewBox="0 0 10 10" aria-hidden="true"><rect x="2" y="1.5" width="2" height="7" rx="0.5"/><rect x="6" y="1.5" width="2" height="7" rx="0.5"/></svg>
-          <svg class="ico-play" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5 L8.5 5 L2.5 8.5 Z"/></svg>
-        </button>
-      </div>
-      <div class="usecase-canvas-caption">
-        <span class="usecase-canvas-caption__eq">p(θ | x) ∝ p(x | θ) · p(θ)</span>
-        <span class="usecase-canvas-caption__lbl">Bayesian Inference · Posterior formt sich</span>
-      </div>
-    </div>
-    <div class="usecase-block__text">
-      <span class="eyebrow eyebrow--mono">Use Case 02 · BayesFlow</span>
-      <h3 class="usecase-block__h">Wahrscheinlichkeiten statt <em>Vorhersagen</em>.</h3>
-
-      [Mini-Erklärer: Bayesian Inference in 3 Schritten]
-      <div class="bayes-steps">
-        <div class="bayes-step">
-          <div class="bayes-step__lbl">01 · Prior</div>
-          <div class="bayes-step__txt">Was wir <em>vorher</em> wissen. Meist eine breite Vermutung ohne viele Details.</div>
-        </div>
-        <div class="bayes-step bayes-step--arrow">+</div>
-        <div class="bayes-step">
-          <div class="bayes-step__lbl bayes-step__lbl--data">02 · Daten</div>
-          <div class="bayes-step__txt">Messungen, Beobachtungen. Jede neue macht die Unsicherheit kleiner.</div>
-        </div>
-        <div class="bayes-step bayes-step--arrow">=</div>
-        <div class="bayes-step">
-          <div class="bayes-step__lbl bayes-step__lbl--post">03 · Posterior</div>
-          <div class="bayes-step__txt">Was wir <em>jetzt</em> wissen. Schmaler, schärfer, mit Unsicherheits-Info.</div>
-        </div>
-      </div>
-
-      <p class="usecase-block__body">
-        <em>BayesFlow</em> automatisiert genau diesen Schritt mit einem neuronalen Netz: Es lernt aus Simulator plus Prior
-        direkt die Posterior-Verteilung. Einmal trainiert, liefert es für neue Daten die Antwort in Millisekunden,
-        inklusive Unsicherheit. Anwendung: Physik-Parameter aus Messdaten rückschließen, etwa bei
-        Epidemien, Teilchenphysik oder Kognitionsmodellen.
-      </p>
-      <div class="usecase-block__points">
-        <div class="usecase-point">
-          <div class="usecase-point__num">01</div>
-          <div><strong>Likelihood-frei.</strong> Man braucht nur einen Simulator und einen Prior, kein analytisches Modell der Beobachtungen.</div>
-        </div>
-        <div class="usecase-point">
-          <div class="usecase-point__num">02</div>
-          <div><strong>Amortisiert.</strong> Einmal gelernt, sind neue Inferenzen quasi gratis. Kein neues Training pro Datensatz.</div>
-        </div>
-      </div>
-      <div class="usecase-badge">Built on Keras 3 · TF · PyTorch · JAX</div>
-    </div>
-  </div>
-  -->
-</section>
-
-<!-- ═══════════════ S5 — HARDWARE · XLA · TPU · GPU ═══════════════ -->
-<section id="s5" data-label="Hardware">
-  <div class="reveal"><span class="eyebrow eyebrow--mono">§ 05 — Hardware · XLA · TPU · GPU</span></div>
-  <h2 class="reveal" data-delay="1" style="margin-top:16px;max-width:20ch">
-    GPU oder <em>TPU</em>? <br/>Zwei Chips, zwei Geschichten.
-  </h2>
-  <p class="lead reveal" data-delay="2" style="margin-top:24px">
-    <em>GPUs</em> wurden ursprünglich für Computerspiele gebaut und sind eher zufällig gut in KI geworden.
-    Heute werden sie natürlich explizit dafür entwickelt. <em>TPUs</em> hingegen hat Google von Anfang an
-    für neuronale Netze gebaut. Das Bindeglied zwischen beiden ist XLA.
-  </p>
-
-  <!-- TPU vs GPU Vergleich — 3D-Modelle als dezenter Hintergrund-Akzent -->
-  <div class="hw-compare reveal" data-delay="2" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:24px">
-    <!-- GPU Card -->
-    <div style="padding:28px 28px;border:1px solid var(--line);border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);position:relative;overflow:hidden;min-height:260px">
-      <!-- Text-Content (z-index darüber) -->
-      <div style="position:relative;z-index:2">
-        <div style="font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute)">Der Allrounder</div>
-        <div style="font-family:var(--f-display);font-size:clamp(40px,5vw,64px);margin-top:8px;line-height:1">GPU</div>
-        <div style="font-size:15px;color:var(--ink-dim);margin-top:14px;line-height:1.55;max-width:38ch">Kommt aus der Grafik-Welt. NVIDIA, AMD, alle großen. Flexibel für fast alles: Gaming, Rendering, KI. Für Physik-Simulationen solide, aber nicht speziell optimiert.</div>
-        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-          <span style="font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);padding:4px 10px;border:1px solid var(--line-2);border-radius:3px">Universell</span>
-          <span style="font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);padding:4px 10px;border:1px solid var(--line-2);border-radius:3px">Überall verfügbar</span>
-        </div>
-      </div>
-      <!-- 3D-Modell als dezenter Hintergrund-Akzent (rechts unten) -->
-      <div id="gpu3DCanvas" class="hw-card__3d-bg" style="position:absolute;right:-40px;bottom:-25px;width:290px;height:210px;opacity:0.82;pointer-events:none;z-index:0"></div>
-    </div>
-    <!-- TPU Card -->
-    <div style="padding:28px 28px;border:1px solid rgba(79,142,247,.4);border-radius:6px;background:linear-gradient(180deg,rgba(79,142,247,.06),transparent);position:relative;overflow:hidden;min-height:260px">
-      <!-- Text-Content (z-index darüber) -->
-      <div style="position:relative;z-index:2">
-        <div style="font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)">Der Spezialist</div>
-        <div style="font-family:var(--f-display);font-size:clamp(40px,5vw,64px);margin-top:8px;line-height:1">TPU</div>
-        <div style="font-size:15px;color:var(--ink-dim);margin-top:14px;line-height:1.55;max-width:38ch">Von Google speziell für neuronale Netze gebaut. Eng mit JAX &amp; XLA verzahnt. Skaliert fast beliebig, von 1 Chip auf einen Pod mit tausenden. Perfekt für große Physik-Modelle.</div>
-        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-          <span style="font-family:var(--f-mono);font-size:12px;color:var(--blue);padding:4px 10px;border:1px solid rgba(79,142,247,.4);border-radius:3px;background:var(--blue-soft)">KI-native</span>
-          <span style="font-family:var(--f-mono);font-size:12px;color:var(--blue);padding:4px 10px;border:1px solid rgba(79,142,247,.4);border-radius:3px;background:var(--blue-soft)">Skaliert massiv</span>
-        </div>
-      </div>
-      <!-- 3D-Modell als dezenter Hintergrund-Akzent (rechts unten) -->
-      <div id="tpu3DCanvas" class="hw-card__3d-bg" style="position:absolute;right:-30px;bottom:-20px;width:280px;height:210px;opacity:0.88;pointer-events:none;z-index:0"></div>
-    </div>
-  </div>
-
-  <div class="rule reveal" style="margin-top:72px"></div>
-
-  <!-- Sub-Part: Performance-Vergleich als Evidenz -->
-  <div class="reveal" data-delay="1" style="margin-top:40px">
-    <span class="eyebrow eyebrow--mono">§ 05 · b — Was man am Ende davon merkt</span>
-  </div>
-  <h3 class="reveal" data-delay="1" style="margin-top:18px;max-width:22ch;font-family:var(--f-display);font-size:clamp(30px,4vw,52px);font-weight:400;line-height:1.08;letter-spacing:-0.02em">
-    XLA <em style="font-style:italic;color:var(--blue)">fusioniert</em>. TPUs ziehen vorbei.
-  </h3>
-
-  <!-- TPU-Facts: Warum TPUs vorbei ziehen (vor dem Chart) -->
-  <div class="compare-stats reveal" data-delay="2" style="margin-top:28px">
-    <div class="compare-stat">
-      <div class="compare-stat__lbl">Was TPU heißt</div>
-      <div class="compare-stat__val"><em>Matrix</em>-Spezialist</div>
-      <div class="compare-stat__sub">„Tensor Processing Unit", also ein Google-Chip speziell für Matrix-Multiplikation. Genau das ist die Kern-Operation in neuronalen Netzen.</div>
-    </div>
-    <div class="compare-stat">
-      <div class="compare-stat__lbl">Preis-Leistung</div>
-      <div class="compare-stat__val"><em>2–5×</em> pro Dollar</div>
-      <div class="compare-stat__sub">Höherer Durchsatz als vergleichbare NVIDIA GPUs bei gleichen Workloads. Weniger Allzweck-Ballast, spezialisierte Architektur.</div>
-    </div>
-    <div class="compare-stat">
-      <div class="compare-stat__lbl">Zusammenspiel</div>
-      <div class="compare-stat__val"><em>Nativ</em> mit JAX</div>
-      <div class="compare-stat__sub">XLA und TPUs wurden bei Google parallel entwickelt. JAX spricht XLA direkt. Keine Umwege, keine Kompromisse.</div>
-    </div>
-  </div>
-
-  <p class="body reveal" data-delay="3" style="margin-top:28px;max-width:64ch">
-    Wie sich das in Zahlen auswirkt: Durchsatz relativ zu PyTorch auf einer NVIDIA H100 (= 1.0). Mittelwert über
-    Transformer-Training und PINN-Szenarien. Konkrete Zahlen schwanken je nach Modell. Das Muster bleibt.
-  </p>
-
-  <div class="perf">
-    <div class="perf__chart reveal" data-delay="2">
-      <div class="perf__chart-head">
-        <div class="perf__chart-title">Geschwindigkeit im Vergleich (Trainings-Schritte pro Sekunde)</div>
-        <div class="perf__chart-axis">0 ———— 4×</div>
-      </div>
-
-      <div class="bar bar--pt" data-width="25">
-        <div class="bar__lbl"><strong>PyTorch</strong><span>auf NVIDIA GPU</span></div>
-        <div class="bar__track"><div class="bar__fill"></div></div>
-        <div class="bar__val">1.0×</div>
-      </div>
-      <div class="bar bar--pt" data-width="35">
-        <div class="bar__lbl"><strong>PyTorch 2</strong><span>GPU · mit Compiler</span></div>
-        <div class="bar__track"><div class="bar__fill"></div></div>
-        <div class="bar__val">1.4×</div>
-      </div>
-      <div class="bar bar--tf" data-width="33">
-        <div class="bar__lbl"><strong>TensorFlow</strong><span>auf NVIDIA GPU</span></div>
-        <div class="bar__track"><div class="bar__fill"></div></div>
-        <div class="bar__val">1.3×</div>
-      </div>
-      <div class="bar bar--jax" data-width="52">
-        <div class="bar__lbl"><strong>JAX</strong><span>GPU · mit XLA</span></div>
-        <div class="bar__track"><div class="bar__fill"></div></div>
-        <div class="bar__val">2.1×</div>
-      </div>
-      <div class="bar bar--jax" data-width="78">
-        <div class="bar__lbl"><strong>JAX</strong><span>auf einer TPU</span></div>
-        <div class="bar__track"><div class="bar__fill"></div></div>
-        <div class="bar__val">3.1×</div>
-      </div>
-      <div class="bar bar--jax" data-width="96" style="margin-bottom:0">
-        <div class="bar__lbl"><strong>JAX</strong><span>auf 8 TPU-Chips</span></div>
-        <div class="bar__track"><div class="bar__fill"></div></div>
-        <div class="bar__val">3.8×</div>
-      </div>
-
-      <div class="perf__notes">// Referenz: PyTorch auf NVIDIA H100 = 1.0. TF &amp; JAX mit XLA-Acceleration. Quellen: Keras 3 Launch-Benchmarks &amp; MLPerf.</div>
-    </div>
-
-    <div class="perf-callout reveal" data-delay="3">
-      <div class="perf-stat">
-        <div class="perf-stat__num" data-count="3.8">0</div>
-        <div class="perf-stat__lbl">× so schnell auf 8 TPU-Chips wie PyTorch auf einer NVIDIA H100.</div>
-      </div>
-      <div class="perf-stat">
-        <div class="perf-stat__num" data-count="0" data-suffix="∞">—</div>
-        <div class="perf-stat__lbl">Zeilen Code musst du am Modell ändern, um von GPU auf TPU zu wechseln.</div>
-      </div>
-      <div class="perf-stat">
-        <div class="perf-stat__num" data-count="1">0</div>
-        <div class="perf-stat__lbl">Umgebungs&shy;variable entscheidet über die gesamte Hardware-Kette.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ S6 — FAZIT ═══════════════ -->
-<section id="s6" data-label="Fazit">
-  <div class="reveal"><span class="eyebrow eyebrow--mono">§ 06 — Fazit · Nutzen für Physik &amp; alle</span></div>
-  <h2 class="reveal" data-delay="1" style="margin-top:16px;max-width:18ch">
-    Was bleibt hängen, <em>für Physik und alle</em>.
-  </h2>
-
-  <div class="fazit">
-    <div class="fazit__card reveal" data-delay="2">
-      <div class="fazit__num">— 01</div>
-      <div class="fazit__h"><em>Einfachheit</em> trifft auf <em>Rechenpower</em>.</div>
-      <div class="fazit__p">Keras macht das Bauen von Modellen einfach. JAX mit TPU macht sie massiv skalierbar. Beides zusammen gab es so vorher nicht.</div>
-    </div>
-    <div class="fazit__card reveal" data-delay="3">
-      <div class="fazit__num">— 02</div>
-      <div class="fazit__h"><em>Freiheit</em> statt Lock-in.</div>
-      <div class="fazit__p">Der Entwickler entscheidet selbst, welchen Motor er nutzt, je nach Aufgabe, Hardware oder Budget. Kein Umschreiben bei einem Wechsel. Das spart massiv Zeit und Geld.</div>
-    </div>
-    <div class="fazit__card reveal" data-delay="4">
-      <div class="fazit__num">— 03</div>
-      <div class="fazit__h">Ein großer Schritt für die <em>Physik</em>.</div>
-      <div class="fazit__p">PINNs, Simulationen, Wetter- und Strömungsmodelle werden durch Keras 3 + JAX zugänglich, ohne dass man Hardware-Experte oder ML-Ingenieur sein muss.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ S7 — QUELLEN & FRAGEN ═══════════════ -->
-<section id="s7" data-label="Quellen-Fragen">
-  <div class="reveal"><span class="eyebrow eyebrow--mono">§ 07 — Quellen &amp; Fragen</span></div>
-  <h2 class="reveal" data-delay="1" style="margin-top:16px;max-width:18ch">
-    Literatur, Referenzen und euer Input.
-  </h2>
-
-  <div class="sources">
-    <div class="source reveal" data-delay="1">
-      <div class="source__num">[01]</div>
-      <div class="source__title">Chollet, F. &amp; Watson, M.: Introduction to TensorFlow, PyTorch, JAX, and Keras <em>Deep Learning with Python · deeplearningwithpython.io</em></div>
-      <div class="source__year">2024</div>
-    </div>
-    <div class="source reveal" data-delay="2">
-      <div class="source__num">[02]</div>
-      <div class="source__title">Zhernovyi, V.: Choosing Your AI Stack: PyTorch, TensorFlow, or JAX? <em>blackthorn-vision.com</em></div>
-      <div class="source__year">2024</div>
-    </div>
-    <div class="source reveal" data-delay="2">
-      <div class="source__num">[03]</div>
-      <div class="source__title">Keras Team: Deep Learning for humans, Introducing Keras 3.0 <em>keras.io</em></div>
-      <div class="source__year">2023</div>
-    </div>
-    <div class="source reveal" data-delay="3">
-      <div class="source__num">[04]</div>
-      <div class="source__title">Iyer, R. &amp; Kilaru, S.: Building production AI on Google Cloud TPUs with JAX <em>developers.googleblog.com</em></div>
-      <div class="source__year">2024</div>
-    </div>
-    <div class="source reveal" data-delay="3">
-      <div class="source__num">[05]</div>
-      <div class="source__title">Toscano, J. D. et al.: From PINNs to PIKANs: Recent Advances in Physics-Informed Machine Learning <em>arXiv · 2410.13228</em></div>
-      <div class="source__year">2024</div>
-    </div>
-    <div class="source reveal" data-delay="4">
-      <div class="source__num">[06]</div>
-      <div class="source__title">Alawi, Z. B.: A Comparative Survey of PyTorch vs TensorFlow for Deep Learning <em>arXiv · 2508.04035</em></div>
-      <div class="source__year">2025</div>
-    </div>
-    <div class="source reveal" data-delay="4">
-      <div class="source__num">[07]</div>
-      <div class="source__title">Bradbury, J. et al.: JAX: Composable transformations of Python+NumPy programs <em>GitHub · jax-ml/jax</em></div>
-      <div class="source__year">2018</div>
-    </div>
-  </div>
-
-  <div class="closing">
-    <div class="closing__mark reveal" data-delay="1">
-      Danke.<br/><em>Fragen?</em>
-      <div style="margin-top:20px;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--ink-dim);text-transform:none;font-style:normal">
-        <span style="display:inline-block;padding:4px 10px;border:1px dashed var(--line-2);border-radius:3px">// Präsentation mit Hilfe von KI erstellt</span>
-      </div>
-    </div>
-    <div class="closing__meta reveal" data-delay="2">
-      BTU Cottbus-Senftenberg<br/>
-      April 2026<br/>
-      <span style="color:var(--blue)">keras.io · jax.readthedocs.io</span>
-    </div>
-  </div>
-</section>
-
 </main>
 
-<script>
-(() => {
-  // ───────────── SCROLL RESTORATION — immer oben starten ─────────────
-  // Standardmäßig merken sich Browser die Scroll-Position beim Reload.
-  // Für die Präsentation wollen wir immer beim Titel anfangen.
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-  }
-  window.scrollTo(0, 0);
-  // Nochmal nach vollem Laden (falls Browser trotzdem scrollt)
-  window.addEventListener('load', () => window.scrollTo(0, 0));
+<footer>
+  <span>BTU Cottbus-Senftenberg · Sommersemester 2026</span>
+  <span><a href="https://github.com/00Matze000/Vortraege" target="_blank" rel="noopener">github.com/00Matze000/Vortraege</a></span>
+</footer>
 
-  // ───────────── PROGRESS BAR ─────────────
-  const bar = document.getElementById('progressBar');
-  const onScroll = () => {
-    const h = document.documentElement;
-    const p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
-    bar.style.width = (p * 100).toFixed(2) + '%';
-  };
-  window.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
-
-  // ───────────── TOPBAR VISIBILITY (hide on title) ─────────────
-  const topbarEl = document.querySelector('.topbar');
-  const topbarToggle = () => {
-    if(!topbarEl) return;
-    topbarEl.classList.toggle('past-hero', window.scrollY >= window.innerHeight * 0.55);
-  };
-  window.addEventListener('scroll', topbarToggle, {passive:true});
-  topbarToggle();
-
-  // ───────────── REVEAL OBSERVER ─────────────
-  const revealIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('in');
-        revealIO.unobserve(e.target);
-      }
-    });
-  }, {threshold:0.12, rootMargin:'0px 0px -6% 0px'});
-  document.querySelectorAll('.reveal, .rule, .arch-conn, .fazit__card').forEach(el => revealIO.observe(el));
-
-  // ───────────── BARS ─────────────
-  const barIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.querySelectorAll('.bar').forEach((b,i) => {
-          const w = b.getAttribute('data-width');
-          const fill = b.querySelector('.bar__fill');
-          setTimeout(() => { fill.style.width = w + '%'; }, 120 * i);
-        });
-        barIO.unobserve(e.target);
-      }
-    });
-  }, {threshold:0.3});
-  document.querySelectorAll('.perf__chart').forEach(el => barIO.observe(el));
-
-  // ───────────── COUNTERS ─────────────
-  const countIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (!e.isIntersecting) return;
-      const el = e.target;
-      const target = parseFloat(el.dataset.count);
-      const suffix = el.dataset.suffix || '';
-      if (suffix === '∞') { el.textContent = '0'; countIO.unobserve(el); return; }
-      const dur = 1400, t0 = performance.now();
-      const isFloat = !Number.isInteger(target);
-      const step = (t) => {
-        const p = Math.min(1, (t - t0) / dur);
-        const eased = 1 - Math.pow(1 - p, 3);
-        const v = target * eased;
-        el.textContent = isFloat ? v.toFixed(1) : Math.round(v).toString();
-        if (p < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-      countIO.unobserve(el);
-    });
-  }, {threshold:0.5});
-  document.querySelectorAll('[data-count]').forEach(el => countIO.observe(el));
-
-  // ───────────── SECTION NAV (active dot + counter + glow follow) ─────────────
-  const sections = [...document.querySelectorAll('main > section')];
-  const buttons = [...document.querySelectorAll('.nav button')];
-  const counterEl = document.getElementById('curSec');
-  const glow = document.getElementById('glow');
-
-  const setActive = (idx) => {
-    buttons.forEach((b,i) => b.setAttribute('aria-current', i === idx ? 'true' : 'false'));
-    counterEl.textContent = String(idx + 1).padStart(2,'0');
-    // subtle glow hue/position per section (7 sections now)
-    const hues = [50, 35, 55, 45, 60, 50, 40];
-    const offsets = [
-      [60,40],[30,55],[65,45],[35,55],[70,50],[50,45],[50,60]
-    ];
-    glow.style.opacity = idx === 0 ? '1' : '.75';
-    const [x,y] = offsets[idx] || [50,50];
-    glow.style.left = x + '%';
-    glow.style.top = y + '%';
-  };
-
-  // rootMargin -35% oben und unten → "Hit-Zone" = mittlere 30% des Viewports.
-  // Section wird als active markiert sobald ihr Content im zentralen Drittel ist — snappier Wechsel.
-  const navIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        const idx = sections.indexOf(e.target);
-        if (idx >= 0) setActive(idx);
-      }
-    });
-  }, {threshold:0, rootMargin:'-35% 0px -35% 0px'});
-  sections.forEach(s => navIO.observe(s));
-
-  buttons.forEach((b,i) => {
-    b.addEventListener('click', () => {
-      const target = document.getElementById(b.dataset.target);
-      if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
-    });
-  });
-
-  // ───────────── COMPARE TABS (Ohne Keras 3 · TF / PyTorch / JAX) ─────────────
-  (() => {
-    const grid = document.getElementById('compareGrid');
-    if(!grid) return;
-    const tabs = grid.querySelectorAll('.compare-tab-btn');
-    const snippets = grid.querySelectorAll('.compare-stage .compare-snippet');
-    let pulseTimer;
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const id = tab.dataset.target;
-        tabs.forEach(t => t.setAttribute('aria-selected', t === tab ? 'true' : 'false'));
-        snippets.forEach(s => s.classList.toggle('is-active', s.id === id));
-        // Pfeil-Pulse beim Switch
-        grid.classList.remove('tab-switched');
-        void grid.offsetWidth;
-        grid.classList.add('tab-switched');
-        clearTimeout(pulseTimer);
-        pulseTimer = setTimeout(() => grid.classList.remove('tab-switched'), 800);
-      });
-    });
-  })();
-
-  // ───────────── KEYBOARD NAV ─────────────
-  document.addEventListener('keydown', (e) => {
-    const cur = buttons.findIndex(b => b.getAttribute('aria-current') === 'true');
-    if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
-      if (cur < sections.length - 1) { e.preventDefault(); sections[cur+1].scrollIntoView({behavior:'smooth'}); }
-    } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
-      if (cur > 0) { e.preventDefault(); sections[cur-1].scrollIntoView({behavior:'smooth'}); }
-    } else if (e.key === 'Home') {
-      e.preventDefault(); sections[0].scrollIntoView({behavior:'smooth'});
-    } else if (e.key === 'End') {
-      e.preventDefault(); sections[sections.length-1].scrollIntoView({behavior:'smooth'});
-    }
-  });
-})();
-</script>
-<script src="interactive.js"></script>
-<script src="hardware_3d.js" defer></script>
 </body>
 </html>
