@@ -6,49 +6,75 @@
 <title>Vortragsreihe · Angewandte Modellierung und Systemsimulation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #f3ede2;
-    --bg-2: #ece4d4;
-    --ink: #1a1f2e;
-    --ink-soft: #2a3142;
-    --muted: #6b6356;
-    --line: #d8cdb8;
-    --paper: #faf6ee;
-    --indigo: #3a4cd6;
-    --indigo-deep: #2535a8;
-    --amber: #c8862a;
-    --crimson: #b54338;
-    --green: #4a7c3f;
+    /* Landing-Palette: Sage / Forest Green */
+    --bg:        #eaf0d9;
+    --bg-2:      #dde6c5;
+    --bg-3:      #c8d3a8;
+    --ink:       #1d2a1a;
+    --ink-soft:  #2c3e27;
+    --muted:     #5e6f4f;
+    --line:      #b5c294;
+    --paper:     #f4f7e6;
+    --green:     #4a7c3f;
+    --green-deep:#2f5527;
+    --green-glow:rgba(74, 124, 63, 0.30);
+    --amber:     #c89030;
+    --amber-soft:#e0ad55;
+    --t-display: 'DM Serif Display', Georgia, serif;
+    --t-body:    'DM Sans', system-ui, sans-serif;
+    --t-mono:    'JetBrains Mono', ui-monospace, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   html, body {
     background: var(--bg);
     color: var(--ink);
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: var(--t-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
-    background-image: linear-gradient(180deg, #f3ede2 0%, #ece4d4 50%, #ebe2cf 100%);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 80% -10%, rgba(74,124,63,0.22), transparent 60%),
+      radial-gradient(ellipse 60% 50% at -10% 90%, rgba(200,144,48,0.16), transparent 60%),
+      linear-gradient(180deg, #eaf0d9 0%, #dde6c5 70%, #d2dcb6 100%);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     padding: clamp(24px, 5vw, 64px);
+    position: relative;
   }
+  /* Subtiles Korn */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(45,55,38,0.025) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(90deg, rgba(45,55,38,0.025) 0 1px, transparent 1px 22px);
+    opacity: 0.5;
+  }
+
+  header, main, footer { position: relative; z-index: 1; }
+
   header {
-    max-width: 1280px;
+    max-width: 1320px;
     width: 100%;
     margin: 0 auto;
     padding-bottom: clamp(36px, 6vh, 64px);
     border-bottom: 1px solid var(--line);
   }
   .eyebrow {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: var(--t-mono);
     font-size: 13px;
-    color: var(--indigo);
-    letter-spacing: 0.16em;
+    color: var(--green-deep);
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     margin-bottom: 18px;
     display: inline-flex;
@@ -57,86 +83,72 @@
   }
   .eyebrow::before {
     content: "§";
-    font-family: 'DM Serif Display', Georgia, serif;
+    font-family: var(--t-display);
     color: var(--amber);
     font-style: italic;
     font-size: 22px;
+    line-height: 1;
   }
   h1 {
-    font-family: 'DM Serif Display', Georgia, serif;
-    font-size: clamp(42px, 6vw, 88px);
+    font-family: var(--t-display);
+    font-size: clamp(42px, 6.4vw, 96px);
     font-weight: 400;
     line-height: 1.05;
     color: var(--ink);
-    margin-bottom: 16px;
+    margin-bottom: 18px;
+    letter-spacing: -0.01em;
   }
-  h1 em { font-style: italic; color: var(--indigo); }
+  h1 em { font-style: italic; color: var(--green); }
   header p {
-    font-size: clamp(17px, 1.4vw, 21px);
+    font-size: clamp(17px, 1.4vw, 22px);
     color: var(--ink-soft);
-    max-width: 60ch;
+    max-width: 64ch;
     line-height: 1.55;
   }
+
   main {
-    max-width: 1280px;
+    max-width: 1320px;
     width: 100%;
     margin: 0 auto;
-    padding: clamp(36px, 6vh, 64px) 0 clamp(36px, 6vh, 64px);
+    padding: clamp(40px, 6vh, 64px) 0;
     flex: 1;
   }
   .talks {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: clamp(20px, 2.4vw, 32px);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: clamp(20px, 2.4vw, 28px);
   }
+
+  /* Gemeinsame Card-Basis */
   .talk {
     display: flex;
     flex-direction: column;
-    background: var(--paper);
-    border: 1px solid var(--line);
     border-radius: 12px;
-    padding: clamp(24px, 2.4vw, 36px);
+    padding: clamp(26px, 2.4vw, 36px);
     text-decoration: none;
-    color: var(--ink);
-    transition: transform 0.25s cubic-bezier(0.2,0.8,0.2,1), border-color 0.25s ease, box-shadow 0.25s ease;
+    transition: transform 0.3s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.3s ease;
     position: relative;
     overflow: hidden;
-    min-height: 320px;
+    min-height: 360px;
+    isolation: isolate;
   }
-  .talk::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--indigo), var(--amber));
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
-  .talk:hover {
-    transform: translateY(-4px);
-    border-color: var(--indigo);
-    box-shadow: 0 16px 40px -12px rgba(58, 76, 214, 0.18);
-  }
-  .talk:hover::before { opacity: 1; }
+  .talk:hover { transform: translateY(-4px); }
+
   .talk-num {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: var(--t-mono);
     font-size: 12px;
-    color: var(--muted);
     letter-spacing: 0.18em;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
   .talk-title {
-    font-family: 'DM Serif Display', Georgia, serif;
-    font-size: clamp(28px, 2.6vw, 40px);
+    font-size: clamp(28px, 2.4vw, 40px);
     font-weight: 400;
     line-height: 1.1;
-    color: var(--ink);
     margin-bottom: 14px;
+    letter-spacing: -0.005em;
   }
-  .talk-title em { font-style: italic; color: var(--indigo); }
   .talk-sub {
     font-size: 16px;
-    color: var(--ink-soft);
     line-height: 1.55;
     margin-bottom: 24px;
     flex: 1;
@@ -145,35 +157,141 @@
     display: flex;
     gap: 14px;
     flex-wrap: wrap;
-    padding-top: 20px;
-    border-top: 1px dashed var(--line);
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    padding-top: 18px;
+    border-top: 1px dashed currentColor;
+    font-family: var(--t-mono);
     font-size: 11px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--muted);
+    opacity: 0.8;
   }
-  .talk-meta span { display: inline-flex; align-items: center; gap: 6px; }
   .talk-cta {
-    margin-top: 24px;
+    margin-top: 22px;
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: var(--t-mono);
     font-size: 13px;
-    color: var(--indigo);
     letter-spacing: 0.06em;
     transition: gap 0.2s ease;
   }
   .talk:hover .talk-cta { gap: 16px; }
   .talk-cta::after {
     content: "→";
-    font-family: 'DM Serif Display', Georgia, serif;
     font-size: 18px;
-    transition: transform 0.2s ease;
   }
+
+  /* ─── Karte Vortrag 1 — Schwarz / Blau / Instrument Serif ─── */
+  .talk-1 {
+    background: #060608;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 12px 32px -10px rgba(0,0,0,0.45);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+  .talk-1::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at top right, rgba(79,142,247,0.18), transparent 60%),
+      radial-gradient(ellipse at bottom left, rgba(245,184,74,0.10), transparent 60%);
+    z-index: -1;
+  }
+  .talk-1::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #4f8ef7, #f5b84a);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .talk-1:hover { box-shadow: 0 18px 48px -12px rgba(79,142,247,0.45); }
+  .talk-1:hover::after { opacity: 1; }
+  .talk-1 .talk-num { color: rgba(255,255,255,0.55); }
+  .talk-1 .talk-title { font-family: 'Instrument Serif', Georgia, serif; }
+  .talk-1 .talk-title em { font-style: italic; color: #4f8ef7; }
+  .talk-1 .talk-sub { color: rgba(255,255,255,0.78); }
+  .talk-1 .talk-meta { border-top-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.55); }
+  .talk-1 .talk-cta { color: #4f8ef7; }
+
+  /* ─── Karte Vortrag 2 — Cream / Indigo · Amber / DM Serif ─── */
+  .talk-2 {
+    background: #faf6ee;
+    color: #1a1f2e;
+    border: 1px solid #d8cdb8;
+    box-shadow: 0 12px 32px -10px rgba(26,31,46,0.10);
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+  .talk-2::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at top right, rgba(58,76,214,0.10), transparent 60%),
+      radial-gradient(ellipse at bottom left, rgba(200,134,42,0.10), transparent 60%);
+    z-index: -1;
+  }
+  .talk-2::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #3a4cd6, #c8862a);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .talk-2:hover { box-shadow: 0 18px 48px -12px rgba(58,76,214,0.30); }
+  .talk-2:hover::after { opacity: 1; }
+  .talk-2 .talk-num { color: #6b6356; }
+  .talk-2 .talk-title { font-family: 'DM Serif Display', Georgia, serif; color: #1a1f2e; }
+  .talk-2 .talk-title em { font-style: italic; color: #3a4cd6; }
+  .talk-2 .talk-sub { color: #2a3142; }
+  .talk-2 .talk-meta { border-top-color: rgba(26,31,46,0.18); color: #6b6356; }
+  .talk-2 .talk-cta { color: #3a4cd6; }
+
+  /* ─── Karte „Coming Soon" — Sage / dashed ─── */
+  .talk-coming {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1.5px dashed var(--line);
+    cursor: default;
+  }
+  .talk-coming:hover {
+    transform: none;
+    border-color: var(--green);
+    background: rgba(74, 124, 63, 0.04);
+  }
+  .talk-coming .talk-num { color: var(--muted); }
+  .talk-coming .talk-question {
+    font-family: var(--t-display);
+    font-style: italic;
+    color: var(--green);
+    font-size: clamp(72px, 9vw, 140px);
+    line-height: 0.9;
+    margin-bottom: 14px;
+    letter-spacing: -0.02em;
+  }
+  .talk-coming .talk-title {
+    font-family: var(--t-display);
+    color: var(--ink);
+  }
+  .talk-coming .talk-sub { color: var(--ink-soft); }
+  .talk-coming .talk-meta {
+    border-top-color: var(--line);
+    color: var(--muted);
+  }
+  .talk-coming .talk-meta-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: rgba(74,124,63,0.06);
+  }
+
   footer {
-    max-width: 1280px;
+    max-width: 1320px;
     width: 100%;
     margin: 0 auto;
     padding-top: clamp(24px, 4vh, 40px);
@@ -182,14 +300,14 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: var(--t-mono);
     font-size: 11px;
     letter-spacing: 0.1em;
     color: var(--muted);
     text-transform: uppercase;
   }
-  footer a { color: var(--indigo); text-decoration: none; }
-  footer a:hover { text-decoration: underline; }
+  footer a { color: var(--green-deep); text-decoration: none; }
+  footer a:hover { color: var(--green); text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -203,29 +321,40 @@
 <main>
   <div class="talks">
 
-    <a href="Vortrag1/" class="talk">
-      <div class="talk-num">01</div>
+    <!-- Vortrag 1 -->
+    <a href="Vortrag1/" class="talk talk-1">
+      <div class="talk-num">01 / APRIL 2026</div>
       <h2 class="talk-title">Keras 3 als <em>Game-Changer</em></h2>
       <p class="talk-sub">Ein Code, drei Backends. Wie Keras 3 die Lock-in-Frage zwischen TensorFlow, PyTorch und JAX auflöst und warum JAX mit XLA auf TPU der schnellste Weg in die Physik-Simulation ist.</p>
       <div class="talk-meta">
-        <span>April 2026</span>
         <span>~5 Min</span>
         <span>Keras · JAX · XLA</span>
       </div>
       <span class="talk-cta">Vortrag öffnen</span>
     </a>
 
-    <a href="Vortrag2/" class="talk">
-      <div class="talk-num">02</div>
+    <!-- Vortrag 2 -->
+    <a href="Vortrag2/" class="talk talk-2">
+      <div class="talk-num">02 / MAI 2026</div>
       <h2 class="talk-title">Zustandslos <em>skalieren</em></h2>
       <p class="talk-sub">Der funktionale Paradigmenwechsel von Keras zu Flax. Pure Functions, PRNGKeys, init / apply, PyTree und ein 3D-Determinismus-Beweis nebeneinander.</p>
       <div class="talk-meta">
-        <span>Mai 2026</span>
         <span>~5 Min</span>
         <span>JAX · Flax · Pure Functions</span>
       </div>
       <span class="talk-cta">Vortrag öffnen</span>
     </a>
+
+    <!-- Coming Soon -->
+    <div class="talk talk-coming" aria-disabled="true">
+      <div class="talk-num">03 / TBD</div>
+      <div class="talk-question">?</div>
+      <h2 class="talk-title">Weitere Vorträge folgen.</h2>
+      <p class="talk-sub">Hier landet der nächste Lightning-Talk aus dem Modul. Thema offen.</p>
+      <div class="talk-meta">
+        <span class="talk-meta-tag">coming soon</span>
+      </div>
+    </div>
 
   </div>
 </main>
