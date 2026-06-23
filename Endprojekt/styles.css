@@ -1,0 +1,613 @@
+:root {
+  --void:     #050d08;
+  --moss:     #0a1f14;
+  --forest:   #0d3b24;
+  --emerald:  #1d6b3e;
+  --verdant:  #2d9669;
+  --mist:     #a8d5b9;
+  --gold:     #c9a961;
+  --gold-hi:  #e6c878;
+  --gold-dim: #8a7340;
+  --parchment:#f4ebd0;
+  --bone:     #ede4ca;
+
+  --font-display: "Cinzel", "Trajan Pro", serif;
+  --font-serif:   "Cormorant Garamond", "EB Garamond", serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--void);
+  color: var(--bone);
+  font-family: var(--font-serif);
+  font-weight: 300;
+  overflow-x: hidden;
+  /* Smooths keyboard / anchor jumps without affecting wheel/trackpad feel */
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { min-height: 100vh; }
+
+/* ---------- 3D canvas ---------- */
+#scene-canvas {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  display: block;
+}
+
+/* Vignette overlay — adds cinematic weight */
+.vignette {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 12%, transparent 85%, rgba(0,0,0,0.65) 100%);
+}
+
+/* Film grain */
+.grain {
+  position: fixed; inset: -50%; z-index: 2; pointer-events: none;
+  opacity: 0.07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/></svg>");
+  animation: grain 0.7s steps(4) infinite;
+}
+@keyframes grain {
+  0%   { transform: translate(0,0); }
+  25%  { transform: translate(-3%, 2%); }
+  50%  { transform: translate(2%, -3%); }
+  75%  { transform: translate(-1%, 1%); }
+  100% { transform: translate(0,0); }
+}
+
+/* ---------- Scroll container ---------- */
+.narrative { position: relative; z-index: 3; }
+
+.scene {
+  position: relative;
+  min-height: 100vh;
+  padding: 8vh 7vw;
+  display: flex;
+  align-items: center;
+}
+.scene-inner {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Generic typographic primitives */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 1.05vw, 17px);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 2px 14px rgba(0,0,0,0.85);
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.eyebrow::before {
+  content: "";
+  width: 38px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold));
+}
+.eyebrow.right::after {
+  content: "";
+  width: 38px; height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+.roman {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(16px, 1.4vw, 22px);
+  letter-spacing: 0.5em;
+  color: var(--gold);
+  text-transform: uppercase;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.8);
+}
+
+h1.display, h2.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 0.96;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--parchment);
+  text-shadow: 0 4px 30px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.7);
+}
+h1.display { font-size: clamp(72px, 12vw, 200px); letter-spacing: 0.14em; font-weight: 700; }
+h2.display { font-size: clamp(54px, 7vw, 108px); }
+
+.italic-lede {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(26px, 2.4vw, 40px);
+  line-height: 1.45;
+  color: var(--mist);
+  max-width: 50ch;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.95), 0 2px 22px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.body-serif {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(21px, 1.7vw, 30px);
+  line-height: 1.6;
+  color: var(--parchment);
+  max-width: 46ch;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.95), 0 2px 20px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.caption-mono {
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 1vw, 16px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+}
+
+.rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  width: 100%;
+  margin: 28px 0;
+}
+
+/* ---------- Reveal animations (gated by the rAF loop in ui.js) ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  /* Longer, gentler curve for a calmer cinematic settle */
+  transition: opacity 1.4s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.in { opacity: 1; transform: none; }
+.reveal.d1 { transition-delay: 0.12s; }
+.reveal.d2 { transition-delay: 0.26s; }
+.reveal.d3 { transition-delay: 0.42s; }
+.reveal.d4 { transition-delay: 0.60s; }
+
+/* Respect users who ask for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html, body { scroll-behavior: auto; }
+  .reveal { transition-duration: 0.01ms; transform: none; }
+}
+
+/* ---------- Scene 1 (Prologue) ---------- */
+.scene-prologue { text-align: center; min-height: 100vh; }
+.scene-prologue .scene-inner { display: flex; flex-direction: column; align-items: center; gap: 28px; position: relative; }
+/* Centered scrim so the title block reads cleanly against the canopy */
+.scene-prologue .scene-inner::before,
+.scene-epilogue .scene-inner::before {
+  content: "";
+  position: absolute;
+  inset: -8vh -6vw;
+  z-index: -1;
+  background: radial-gradient(70% 60% at 50% 50%, rgba(5, 13, 8, 0.74) 0%, rgba(5, 13, 8, 0.42) 55%, transparent 100%);
+  pointer-events: none;
+}
+.scene-prologue .crest {
+  display: flex; align-items: center; gap: 18px;
+  margin-bottom: 10px;
+}
+.crest .line { width: 60px; height: 1px; background: var(--gold); }
+.crest .glyph { color: var(--gold); font-family: var(--font-display); font-size: 14px; letter-spacing: 0.4em; }
+.scene-prologue h1.display {
+  background: linear-gradient(180deg, #fff8e6 0%, #f3dea2 50%, #dcc483 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Warm glow + soft dark halo so the bright gold stays legible on the canopy */
+  text-shadow: 0 2px 26px rgba(0,0,0,0.7), 0 0 36px rgba(230, 200, 120, 0.28);
+}
+.scene-prologue .sub { display: flex; gap: 32px; align-items: center; }
+
+/* ---------- Motivations-Beat (Prolog): Problem → Lösung ---------- */
+.motivation {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(18px, 2.4vw, 40px);
+  flex-wrap: wrap;
+  max-width: 1040px;
+  margin-top: 8px;
+}
+.motivation .beat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 340px;
+  max-width: 440px;
+  text-align: left;
+  padding: 20px 26px;
+  border: 1px solid rgba(201, 169, 97, 0.28);
+  background: linear-gradient(135deg, rgba(10, 31, 20, 0.5) 0%, rgba(5, 13, 8, 0.34) 100%);
+  border-radius: 2px;
+}
+.motivation .beat-tag {
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 1vw, 15px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+}
+.motivation .beat-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(20px, 1.8vw, 28px);
+  line-height: 1.42;
+  color: var(--bone);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.6);
+}
+.motivation .beat-arrow {
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3vw, 44px);
+  color: var(--gold-hi);
+  text-shadow: 0 0 18px rgba(230, 200, 120, 0.4);
+}
+@media (max-width: 800px) {
+  .motivation .beat-arrow { transform: rotate(90deg); }
+}
+
+.scroll-cue {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  z-index: 5; pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.scroll-cue .label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.4em; color: var(--gold); text-transform: uppercase; }
+.scroll-cue .bar { width: 1px; height: 60px; background: linear-gradient(180deg, var(--gold), transparent); position: relative; overflow: hidden; }
+.scroll-cue .bar::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 30%;
+  background: var(--gold-hi);
+  animation: drip 2.4s ease-in-out infinite;
+}
+@keyframes drip {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateY(220%); opacity: 0; }
+}
+
+/* ---------- Scene with side text ---------- */
+.scene-split .scene-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8vw;
+  align-items: center;
+}
+.scene-split.right-text .scene-inner > .text-col { grid-column: 2; }
+.scene-split .text-col { display: flex; flex-direction: column; gap: 26px; }
+
+/* Soft scrim behind text columns — keeps prose legible over the 3D world */
+.scene-split .text-col,
+.scene-detection .text-col {
+  position: relative;
+}
+.scene-split .text-col::before,
+.scene-detection .text-col::before {
+  content: "";
+  position: absolute;
+  inset: -42px -56px;
+  z-index: -1;
+  background: radial-gradient(120% 100% at 30% 45%, rgba(5, 13, 8, 0.88) 0%, rgba(5, 13, 8, 0.62) 55%, transparent 100%);
+  pointer-events: none;
+}
+.scene-split.right-text .text-col::before {
+  background: radial-gradient(120% 100% at 70% 45%, rgba(5, 13, 8, 0.88) 0%, rgba(5, 13, 8, 0.62) 55%, transparent 100%);
+}
+.scene-split .number-col {
+  font-family: var(--font-display);
+  font-size: clamp(120px, 16vw, 260px);
+  font-weight: 400;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--gold-dim);
+  line-height: 1;
+  user-select: none;
+}
+
+/* ---------- Scene 3 (Ascent) — center stacked ---------- */
+.scene-ascent { align-items: flex-start; padding-top: 18vh; }
+.scene-ascent .scene-inner { max-width: 720px; }
+.scene-ascent h2.display { font-size: clamp(48px, 8vw, 120px); }
+
+/* ---------- Scene 4 (Detection) — HUD-style ---------- */
+.scene-detection .scene-inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 60px;
+  align-items: end;
+}
+.hud {
+  position: relative;
+  border: 1px solid rgba(201, 169, 97, 0.35);
+  padding: 28px 32px;
+  background: linear-gradient(135deg, rgba(10, 31, 20, 0.55) 0%, rgba(5, 13, 8, 0.4) 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  min-width: 320px;
+}
+.hud::before, .hud::after {
+  content: ""; position: absolute; width: 14px; height: 14px;
+  border: 1px solid var(--gold);
+}
+.hud::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.hud::after  { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+.hud .corner-tr, .hud .corner-bl {
+  position: absolute; width: 14px; height: 14px; border: 1px solid var(--gold);
+}
+.hud .corner-tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.hud .corner-bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+.hud-row { display: flex; justify-content: space-between; gap: 24px; padding: 6px 0; border-bottom: 1px dashed rgba(201, 169, 97, 0.2); }
+.hud-row:last-of-type { border-bottom: none; }
+.hud-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em; color: var(--gold-dim); text-transform: uppercase; }
+.hud-value { font-family: var(--font-mono); font-size: 13px; color: var(--gold-hi); }
+.hud-value.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ---------- Bild-Slots (Platzhalter für Live-Screenshots) ---------- */
+.shot {
+  position: relative;
+  border: 1px dashed rgba(201, 169, 97, 0.4);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(201, 169, 97, 0.04) 0px,
+      rgba(201, 169, 97, 0.04) 2px,
+      transparent 2px,
+      transparent 9px
+    ),
+    linear-gradient(135deg, rgba(10, 31, 20, 0.45) 0%, rgba(5, 13, 8, 0.3) 100%);
+  border-radius: 2px;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 18px;
+  overflow: hidden;
+}
+.shot::before, .shot::after {
+  content: ""; position: absolute; width: 16px; height: 16px;
+  border: 1px solid var(--gold);
+}
+.shot::before { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+.shot::after  { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+.shot .shot-tag {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--gold);
+}
+.shot .shot-hint {
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold-dim);
+}
+.shot.shot-wide { aspect-ratio: 21 / 9; }
+
+/* Gefüllter Slot: echtes Bild statt Platzhalter */
+.shot.shot-filled {
+  border: 1px solid rgba(201, 169, 97, 0.45);
+  background: var(--moss);
+  padding: 0;
+  gap: 0;
+  aspect-ratio: auto;
+}
+.shot.shot-filled img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 52vh;
+  object-fit: cover;
+}
+.shot.shot-filled .shot-caption {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 10px 14px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--gold-hi);
+  text-align: left;
+  background: linear-gradient(180deg, transparent, rgba(5, 13, 8, 0.85));
+}
+.shot.shot-filled::before, .shot.shot-filled::after { z-index: 1; }
+
+/* Zwei Bilder nebeneinander (Erkennung: Boxen/Masken · Epilog: Auswertung) */
+.shot-duo {
+  display: flex;
+  gap: clamp(14px, 1.8vw, 28px);
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1080px;
+}
+.shot-duo .shot { flex: 1 1 380px; max-width: 520px; }
+
+/* In der Erkennungs-Szene spannt das Duo über die volle Breite unter Text + HUD */
+.scene-detection .shot-duo {
+  grid-column: 1 / -1;
+  max-width: 1180px;
+  margin: 12px auto 0;
+}
+.scene-detection .shot-duo .shot { max-width: 580px; }
+
+/* Epilog: Auswertungs-Plots (weißer Hintergrund) dezenter und kleiner einbinden */
+.scene-epilogue .shot-duo { max-width: 860px; }
+.scene-epilogue .shot-duo .shot { max-width: 420px; }
+.scene-epilogue .shot-duo img { filter: saturate(0.92) brightness(0.96); }
+
+/* Ergebnis-Kennzahlen (Epilog) */
+.stats-row {
+  display: flex;
+  gap: clamp(28px, 4vw, 72px);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.stats-row .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.stats-row .stat-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(38px, 4.2vw, 64px);
+  color: var(--gold-hi);
+  text-shadow: 0 0 28px rgba(230, 200, 120, 0.35), 0 2px 14px rgba(0,0,0,0.8);
+}
+.stats-row .stat-label {
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 0.85vw, 13px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Übergang zur Live-Demo */
+.demo-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 16px 34px;
+  border: 1px solid rgba(201, 169, 97, 0.5);
+  border-radius: 2px;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 1.8vw, 28px);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--parchment);
+  background: linear-gradient(135deg, rgba(10, 31, 20, 0.6) 0%, rgba(5, 13, 8, 0.4) 100%);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.8);
+}
+.demo-cue .demo-arrow {
+  color: var(--gold-hi);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* ---------- Scene 5 (Epilogue) ---------- */
+.scene-epilogue { text-align: center; min-height: 110vh; padding-bottom: 22vh; }
+.scene-epilogue .scene-inner { display: flex; flex-direction: column; align-items: center; gap: 32px; position: relative; }
+.scene-epilogue .quote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(34px, 4vw, 56px);
+  line-height: 1.4;
+  max-width: 22ch;
+  color: var(--parchment);
+  text-shadow: 0 3px 22px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.6);
+}
+.scene-epilogue .attribution { font-family: var(--font-mono); font-size: clamp(13px, 1vw, 16px); letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; text-shadow: 0 2px 12px rgba(0,0,0,0.8); }
+.crest-large {
+  width: 56px; height: 56px;
+  border: 1px solid var(--gold);
+  transform: rotate(45deg);
+  display: flex; align-items: center; justify-content: center;
+}
+.crest-large > div {
+  width: 18px; height: 18px;
+  background: var(--gold);
+  transform: rotate(45deg);
+}
+
+/* ---------- Persistent UI chrome ---------- */
+.top-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 10;
+  padding: 28px 40px;
+  display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none;
+}
+.brand {
+  font-family: var(--font-display);
+  font-size: 13px; letter-spacing: 0.5em;
+  color: var(--gold); text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px;
+}
+.brand-mark {
+  width: 10px; height: 10px; transform: rotate(45deg);
+  border: 1px solid var(--gold);
+  position: relative;
+}
+.brand-mark::after {
+  content: ""; position: absolute; inset: 2px;
+  background: var(--gold);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.3em;
+  color: var(--gold-dim); text-transform: uppercase;
+  text-align: right;
+  line-height: 1.7;
+}
+
+/* Side chapter rail */
+.chapter-rail {
+  position: fixed;
+  right: 32px; top: 50%; transform: translateY(-50%);
+  z-index: 6;
+  display: flex; flex-direction: column; gap: 18px;
+  pointer-events: none;
+}
+.chapter-rail .ch {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--gold-dim); letter-spacing: 0.25em; text-transform: uppercase;
+  opacity: 0.5; transition: opacity 0.4s ease, color 0.4s ease;
+}
+.chapter-rail .ch .dot {
+  width: 6px; height: 6px; border: 1px solid var(--gold-dim);
+  transform: rotate(45deg); transition: all 0.4s ease;
+}
+.chapter-rail .ch.active { opacity: 1; color: var(--gold-hi); }
+.chapter-rail .ch.active .dot { background: var(--gold-hi); border-color: var(--gold-hi); box-shadow: 0 0 12px var(--gold-hi); }
+
+/* Progress bar */
+.progress-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 6; height: 1px; background: rgba(201, 169, 97, 0.12);
+}
+.progress-bar .fill {
+  height: 100%; background: linear-gradient(90deg, var(--gold) 0%, var(--gold-hi) 100%);
+  width: 0%;
+  box-shadow: 0 0 12px var(--gold-hi);
+}
+
+/* Footer mini-info on each scene */
+.scene-footer {
+  position: absolute; bottom: 32px; left: 7vw; right: 7vw;
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.3em;
+  color: var(--gold-dim); text-transform: uppercase;
+  pointer-events: none;
+}
+
+@media (max-width: 800px) {
+  .scene { padding: 6vh 6vw; }
+  .scene-split .scene-inner { grid-template-columns: 1fr; gap: 30px; }
+  .scene-split.right-text .scene-inner > .text-col { grid-column: 1; }
+  .scene-detection .scene-inner { grid-template-columns: 1fr; }
+  .chapter-rail { display: none; }
+  .top-bar { padding: 18px 22px; }
+  /* Keep prose comfortably large but not overflowing on narrow screens */
+  .italic-lede { font-size: clamp(22px, 5.4vw, 32px); max-width: 100%; }
+  .body-serif  { font-size: clamp(18px, 4.6vw, 24px); max-width: 100%; }
+  .scene-split .text-col::before,
+  .scene-detection .text-col::before { inset: -22px -26px; }
+}

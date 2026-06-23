@@ -251,43 +251,148 @@
   .talk-2 .talk-meta { border-top-color: rgba(26,31,46,0.18); color: #6b6356; }
   .talk-2 .talk-cta { color: #3a4cd6; }
 
-  /* ─── Karte „Coming Soon" — Sage / dashed ─── */
-  .talk-coming {
-    background: transparent;
-    color: var(--ink-soft);
-    border: 1.5px dashed var(--line);
-    cursor: default;
+  /* ─── Hero-Panel: Endprojekt — breit, dunkelgrün, Luftbild-Erkennung ─── */
+  .feature {
+    display: grid;
+    grid-template-columns: 1.12fr 0.88fr;
+    gap: clamp(28px, 4vw, 56px);
+    align-items: center;
+    margin-bottom: clamp(20px, 2.4vw, 28px);
+    border-radius: 14px;
+    padding: clamp(30px, 3.6vw, 56px);
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      radial-gradient(ellipse 70% 90% at 88% 12%, rgba(120,180,90,0.22), transparent 60%),
+      linear-gradient(135deg, #14211a 0%, #1d3122 58%, #233a28 100%);
+    color: #eef3e2;
+    border: 1px solid rgba(120,170,100,0.28);
+    box-shadow: 0 22px 60px -22px rgba(18,38,20,0.6);
+    font-family: var(--t-body);
+    transition: transform 0.3s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.3s ease;
   }
-  .talk-coming:hover {
-    transform: none;
-    border-color: var(--green);
-    background: rgba(74, 124, 63, 0.04);
+  .feature::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #6fae54, #c89030);
+    opacity: 0;
+    transition: opacity 0.3s ease;
   }
-  .talk-coming .talk-num { color: var(--muted); }
-  .talk-coming .talk-question {
+  .feature:hover { transform: translateY(-4px); box-shadow: 0 30px 74px -24px rgba(74,124,63,0.5); }
+  .feature:hover::after { opacity: 1; }
+
+  .feature-eyebrow {
+    font-family: var(--t-mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-soft);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .feature-eyebrow::before {
+    content: "★";
+    color: var(--amber);
+    font-size: 13px;
+  }
+  .feature-title {
     font-family: var(--t-display);
-    font-style: italic;
-    color: var(--green);
-    font-size: clamp(72px, 9vw, 140px);
-    line-height: 0.9;
-    margin-bottom: 14px;
-    letter-spacing: -0.02em;
+    font-size: clamp(34px, 4.4vw, 64px);
+    font-weight: 400;
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    margin-bottom: 16px;
+    color: #f4f7e6;
   }
-  .talk-coming .talk-title {
-    font-family: var(--t-display);
-    color: var(--ink);
+  .feature-title em { font-style: italic; color: #9cd17e; }
+  .feature-sub {
+    font-size: clamp(16px, 1.3vw, 19px);
+    line-height: 1.55;
+    color: rgba(238,243,226,0.82);
+    max-width: 52ch;
+    margin-bottom: 26px;
   }
-  .talk-coming .talk-sub { color: var(--ink-soft); }
-  .talk-coming .talk-meta {
-    border-top-color: var(--line);
-    color: var(--muted);
+  .feature-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--t-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 26px;
   }
-  .talk-coming .talk-meta-tag {
-    display: inline-block;
-    padding: 4px 10px;
-    border: 1px solid var(--line);
+  .feature-meta span {
+    padding: 5px 11px;
+    border: 1px solid rgba(156,209,126,0.32);
+    border-radius: 4px;
+    background: rgba(111,174,84,0.08);
+    color: rgba(238,243,226,0.78);
+  }
+  .feature-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--t-mono);
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: #9cd17e;
+    transition: gap 0.2s ease;
+  }
+  .feature:hover .feature-cta { gap: 16px; }
+  .feature-cta::after { content: "→"; font-size: 19px; }
+
+  /* Luftbild-/Erkennungs-Visual rechts */
+  .feature-visual {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(156,209,126,0.22);
+    background:
+      radial-gradient(circle at 30% 25%, rgba(80,130,60,0.9), transparent 14%),
+      radial-gradient(circle at 62% 18%, rgba(70,115,52,0.85), transparent 11%),
+      radial-gradient(circle at 80% 40%, rgba(96,150,70,0.85), transparent 13%),
+      radial-gradient(circle at 22% 58%, rgba(72,118,54,0.85), transparent 12%),
+      radial-gradient(circle at 48% 50%, rgba(88,140,66,0.85), transparent 13%),
+      radial-gradient(circle at 70% 70%, rgba(64,108,48,0.85), transparent 12%),
+      radial-gradient(circle at 38% 80%, rgba(84,136,62,0.85), transparent 12%),
+      radial-gradient(circle at 86% 78%, rgba(74,120,56,0.8), transparent 11%),
+      linear-gradient(135deg, #1a2e1c 0%, #243d26 100%);
+    box-shadow: inset 0 0 60px rgba(10,20,10,0.5);
+  }
+  .det {
+    position: absolute;
+    border: 1.5px solid #9cd17e;
     border-radius: 3px;
-    background: rgba(74,124,63,0.06);
+    box-shadow: 0 0 0 1px rgba(20,40,20,0.4);
+  }
+  .det::after {
+    content: attr(data-tag);
+    position: absolute;
+    top: -16px;
+    left: -1px;
+    font-family: var(--t-mono);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: #14211a;
+    background: #9cd17e;
+    padding: 1px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .det.amber { border-color: var(--amber-soft); }
+  .det.amber::after { background: var(--amber-soft); }
+
+  @media (max-width: 860px) {
+    .feature { grid-template-columns: 1fr; }
+    .feature-visual { order: -1; max-height: 220px; }
   }
 
   footer {
@@ -315,10 +420,32 @@
 <header>
   <div class="eyebrow">Vortragsreihe</div>
   <h1>Angewandte Modellierung &amp;<br/><em>Systemsimulation.</em></h1>
-  <p>Lightning-Talks aus dem Modul. Jeder ungefähr fünf Minuten, eine Kernidee, ein Aha-Moment. Wähle einen Vortrag.</p>
+  <p>Das Abschlussprojekt und die Lightning-Talks aus dem Modul. Jeder Talk ungefähr fünf Minuten, eine Kernidee, ein Aha-Moment. Wähle einen Beitrag.</p>
 </header>
 
 <main>
+
+  <!-- Endprojekt — Hero-Panel -->
+  <a href="Endprojekt/" class="feature">
+    <div class="feature-text">
+      <div class="feature-eyebrow">Abschlussprojekt</div>
+      <h2 class="feature-title">Den Wald von oben <em>zählen</em></h2>
+      <p class="feature-sub">Eine Multi-Backend-Pipeline zur Baumerkennung aus Drohnenbildern — von der Aufnahme über das Modell bis zur gezählten Baumdichte.</p>
+      <div class="feature-meta">
+        <span>Multi-Backend-Pipeline</span>
+        <span>Drohnenbilder</span>
+        <span>Baumerkennung</span>
+      </div>
+      <span class="feature-cta">Projekt öffnen</span>
+    </div>
+    <div class="feature-visual" aria-hidden="true">
+      <div class="det" data-tag="tree 0.98" style="top:18%; left:24%; width:18%; height:22%;"></div>
+      <div class="det" data-tag="tree 0.95" style="top:42%; left:56%; width:16%; height:20%;"></div>
+      <div class="det amber" data-tag="tree 0.71" style="top:64%; left:30%; width:15%; height:19%;"></div>
+      <div class="det" data-tag="tree 0.93" style="top:30%; left:74%; width:15%; height:19%;"></div>
+    </div>
+  </a>
+
   <div class="talks">
 
     <!-- Vortrag 1 -->
@@ -344,17 +471,6 @@
       </div>
       <span class="talk-cta">Vortrag öffnen</span>
     </a>
-
-    <!-- Coming Soon -->
-    <div class="talk talk-coming" aria-disabled="true">
-      <div class="talk-num">03 / TBD</div>
-      <div class="talk-question">?</div>
-      <h2 class="talk-title">Weitere Vorträge folgen.</h2>
-      <p class="talk-sub">Hier landet der nächste Lightning-Talk aus dem Modul. Thema offen.</p>
-      <div class="talk-meta">
-        <span class="talk-meta-tag">coming soon</span>
-      </div>
-    </div>
 
   </div>
 </main>

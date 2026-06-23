@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Den Wald von oben zählen — Endprojekt</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<canvas id="scene-canvas"></canvas>
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<!-- Persistent chrome -->
+<div class="top-bar">
+  <div class="brand"><span class="brand-mark"></span> Baumdichte</div>
+  <div class="meta">
+    Endprojekt · MMXXVI<br/>
+    Kapitel 00 — Prolog
+  </div>
+</div>
+
+<div class="chapter-rail" id="chapter-rail">
+  <div class="ch" data-i="0"><span class="dot"></span><span>Prolog</span></div>
+  <div class="ch" data-i="1"><span class="dot"></span><span>I — Wald</span></div>
+  <div class="ch" data-i="2"><span class="dot"></span><span>II — Aufstieg</span></div>
+  <div class="ch" data-i="3"><span class="dot"></span><span>III — Erkennung</span></div>
+  <div class="ch" data-i="4"><span class="dot"></span><span>Epilog</span></div>
+</div>
+
+<div class="progress-bar"><div class="fill" id="progress-fill"></div></div>
+
+<!-- Persistent scroll cue, fades after first scene -->
+<div class="scroll-cue" id="scroll-cue">
+  <div class="label">Scroll</div>
+  <div class="bar"></div>
+</div>
+
+<!-- ============================================================
+     NARRATIVE
+============================================================ -->
+<main class="narrative">
+
+  <!-- ====== Scene 1 — Prologue ====== -->
+  <!-- SPRECHZETTEL (≈30 s): „Moin. Eine Frage zum Einstieg: Wie zählt man
+       eigentlich einen Wald? Klassisch geht da jemand rein und schreitet ab.
+       Das dauert Tage und skaliert nicht. Meine Idee: Eine Drohne fliegt
+       drüber, und eine KI zählt jede Baumkrone im Bild. Genau das ist mein
+       Endprojekt: Den Wald von oben zählen." -->
+  <section id="s1" class="scene scene-prologue" data-screen-label="01 — Prolog" data-chapter="0">
+    <div class="scene-inner">
+      <div class="crest reveal">
+        <span class="line"></span>
+        <span class="glyph">⁘</span>
+        <span class="line"></span>
+      </div>
+      <div class="roman reveal d1">Endprojekt · MMXXVI</div>
+      <h1 class="display reveal d2">Den Wald<br/>von oben<br/>zählen</h1>
+      <p class="italic-lede reveal d3">
+        Automatische Baumdichte-Bewertung aus Drohnenvideos.
+      </p>
+
+      <!-- Motivations-Beat: Problem → Lösung (sparsam, als Bühnenbild) -->
+      <div class="motivation reveal d3">
+        <div class="beat">
+          <span class="beat-tag">Problem</span>
+          <span class="beat-text">Einen Wald von Hand zu zählen dauert Tage und skaliert nicht.</span>
+        </div>
+        <span class="beat-arrow">→</span>
+        <div class="beat">
+          <span class="beat-tag">Lösung</span>
+          <span class="beat-text">Eine Drohne fliegt darüber, die KI zählt jede Krone automatisch.</span>
+        </div>
+      </div>
+
+      <div class="rule reveal d4" style="max-width: 280px;"></div>
+      <div class="caption-mono reveal d4">Wie zählt man einen Wald von oben?</div>
+    </div>
+  </section>
+
+  <!-- ====== Scene 2 — The Forest ====== -->
+  <!-- SPRECHZETTEL (≈30 s): „Schauplatz ist ein Kiefernforst in Brandenburg —
+       Monokultur, tausende fast identische Kronen. Die Forstwirtschaft will
+       zwei Zahlen: Bäume pro Hektar und Kronenschluss. Danach richten sich
+       Hiebsplanung und Monitoring. Und das Ganze soll mit ganz normalem
+       RGB-Video gehen — kein LiDAR, keine Spezialsensorik. Ein Flug reicht." -->
+  <section id="s2" class="scene scene-split" data-screen-label="02 — Der Wald" data-chapter="1">
+    <div class="scene-inner">
+      <div class="number-col reveal">I</div>
+      <div class="text-col">
+        <div class="eyebrow reveal">Kapitel I · Der Wald</div>
+        <h2 class="display reveal d1">Im<br/>Unterholz</h2>
+        <p class="italic-lede reveal d2">
+          Ein Kiefernforst in Brandenburg. Tausende fast gleiche Kronen, von Hand nicht zu zählen.
+        </p>
+        <p class="body-serif reveal d3">
+          Die Forstwirtschaft braucht zwei Zahlen: Bäume pro Hektar und Kronenschluss. Sie steuern Hiebsplanung und Monitoring. Dafür reicht hier ein ganz normales RGB-Drohnenvideo und ein einziger Flug.
+        </p>
+        <div class="caption-mono reveal d4">§ 01 — Kontext &amp; Motivation</div>
+      </div>
+    </div>
+    <div class="scene-footer">
+      <span>Brandenburg · Kiefernforst</span>
+      <span>Tiefe · 0 m</span>
+    </div>
+  </section>
+
+  <!-- ====== Scene 3 — The Ascent ====== -->
+  <!-- SPRECHZETTEL (≈35 s): „Die Drohne ist eine DJI Mini 3 Pro — also ganz
+       normale Consumer-Hardware. Sie fliegt auf etwa 50 Metern, Kamera
+       senkrecht nach unten, 4K. Der Knackpunkt ist die Ground Sample Distance:
+       Bei 50 m ist ein Pixel etwa 1,9 cm Boden. Heißt: Eine drei Meter weite
+       Krone liegt auf weit über hundert Pixeln — locker genug zum Erkennen.
+       Aus dem Video filtern wir die stabilen Nadir-Frames raus, das ist unser
+       Datensatz. So sieht so ein Frame aus." -->
+  <section id="s3" class="scene scene-split right-text scene-ascent" data-screen-label="03 — Aufstieg" data-chapter="2">
+    <div class="scene-inner">
+      <div class="number-col reveal">II</div>
+      <div class="text-col">
+        <div class="eyebrow reveal">Kapitel II · Der Aufstieg</div>
+        <h2 class="display reveal d1">Über<br/>dem<br/>Blätter&shy;dach</h2>
+        <p class="italic-lede reveal d2">
+          Die Drohne steigt auf 50 Meter. Aus dem Wald wird eine Karte.
+        </p>
+        <p class="body-serif reveal d3">
+          DJI Mini 3 Pro, Kamera senkrecht nach unten, 4K. Die Ground Sample Distance übersetzt Pixel in Meter: rund 1,9&nbsp;cm pro Pixel. Eine drei Meter weite Krone liegt damit auf weit über hundert Pixeln. Aus dem Video bleiben nur die stabilen, senkrechten Frames.
+        </p>
+        <div class="caption-mono reveal d4">§ 02 — Erfassung · UAV / RGB / 4K</div>
+
+        <!-- Drohnen-Nadir-Frame (extrahiert aus ~50 m, Flug Futterkrippe) -->
+        <figure class="shot shot-filled reveal d4">
+          <img src="assets/nadir_frame.jpg" alt="Drohnen-Frame im Nadir aus rund 50 m Höhe" />
+          <figcaption class="shot-caption">Original-Frame · Nadir · ~50 m AGL</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="scene-footer">
+      <span>Höhe · ~50 m AGL</span>
+      <span>GSD · ~1,9 cm/px</span>
+    </div>
+  </section>
+
+  <!-- ====== Scene 4 — Detection ====== -->
+  <!-- SPRECHZETTEL (≈35 s): „Jetzt muss die Maschine den Wald lesen. Dafür
+       habe ich Erkennungsmodelle auf eigenen, von Hand annotierten
+       Drohnenbildern fine-getunt. Links seht ihr das Ergebnis: Jede Krone
+       bekommt eine Box. Rechts kommt SAM 3 dazu und macht aus jeder Box eine
+       pixelgenaue Maske. Damit kann man auch die Kronenfläche messen, also
+       den Kronenschluss." -->
+  <section id="s4" class="scene scene-detection" data-screen-label="04 — Erkennung" data-chapter="3">
+    <div class="scene-inner">
+      <div class="text-col">
+        <div class="eyebrow reveal">Kapitel III · Die Erkennung</div>
+        <h2 class="display reveal d1">Jeder<br/>Baum,<br/>gezählt.</h2>
+        <p class="italic-lede reveal d2">
+          Eine KI liest den Wald: erst Boxen, dann pixelgenaue Masken.
+        </p>
+        <p class="body-serif reveal d3">
+          Auf eigenen, von Hand annotierten Frames fine-getunt, findet das Modell jede Krone als Box. SAM&nbsp;3 macht daraus pixelgenaue Masken, aus denen Kronenfläche und Kronenschluss folgen.
+        </p>
+      </div>
+
+      <div class="hud reveal d2">
+        <span class="corner-tr"></span><span class="corner-bl"></span>
+        <div class="hud-row">
+          <span class="hud-label">Status</span>
+          <span class="hud-value pulse">● scanning</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Frame</span>
+          <span class="hud-value" id="hud-frame">04827 / 12480</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Detected</span>
+          <span class="hud-value" id="hud-count">000</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Model</span>
+          <span class="hud-value">DeepForest v2 + SAM 3</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Resolution</span>
+          <span class="hud-value">3840 × 2160</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Höhe</span>
+          <span class="hud-value">~50 m AGL</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">GSD</span>
+          <span class="hud-value">~1,9 cm/px</span>
+        </div>
+      </div>
+
+      <!-- Gleicher Frame (Windradwald), zwei Stufen: Boxen → Masken -->
+      <div class="shot-duo reveal d3">
+        <figure class="shot shot-filled">
+          <img src="assets/overlay_boxen.jpg" alt="Erkannte Kronen als Bounding-Boxen (DeepForest v2)" />
+          <figcaption class="shot-caption">Boxen · DeepForest v2 · 160 Bäume</figcaption>
+        </figure>
+        <figure class="shot shot-filled">
+          <img src="assets/overlay_masken.jpg" alt="Pixelgenaue Kronenmasken (DeepForest + SAM 3)" />
+          <figcaption class="shot-caption">Masken · DeepForest + SAM 3 · gleicher Frame</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="scene-footer">
+      <span>Höhe · ~50 m AGL</span>
+      <span>§ 03 — Detektion &amp; Analyse</span>
+    </div>
+  </section>
+
+  <!-- ====== Scene 5 — Epilogue ====== -->
+  <!-- SPRECHZETTEL (≈35 s): „Aus den Kronen wird der Bestand: 371,5 Bäume pro
+       Hektar, 57,5 Prozent Kronenschluss, dazu eine grobe Holzvorratsschätzung.
+       Was ein Förster in Tagen abschreitet, liefert die Pipeline in Minuten.
+       Entstanden ist das Projekt im Dialog mit einer KI, abgesichert mit
+       175 Tests. Und genau diese Anwendung zeige ich euch jetzt live." -->
+  <section id="s5" class="scene scene-epilogue" data-screen-label="05 — Epilog" data-chapter="4">
+    <div class="scene-inner">
+      <div class="crest-large reveal"><div></div></div>
+      <div class="roman reveal d1">Epilog</div>
+
+      <!-- Ergebnis-Kennzahlen (Flug Futterkrippe, DeepForest v2, dedupliziert) -->
+      <div class="stats-row reveal d1">
+        <div class="stat">
+          <span class="stat-value">371,5</span>
+          <span class="stat-label">Bäume / ha</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">57,5&nbsp;%</span>
+          <span class="stat-label">Kronenschluss</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">~278</span>
+          <span class="stat-label">Vfm / ha</span>
+        </div>
+      </div>
+
+      <!-- Auswertung: Dashboard + GPS-Dichtekarte -->
+      <div class="shot-duo reveal d2">
+        <figure class="shot shot-filled">
+          <img src="assets/dashboard.png" alt="Dashboard mit Bestandskennzahlen" />
+          <figcaption class="shot-caption">Dashboard · Kennzahlen</figcaption>
+        </figure>
+        <figure class="shot shot-filled">
+          <img src="assets/gps_dichtekarte.png" alt="GPS-Dichtekarte des Bestands" />
+          <figcaption class="shot-caption">GPS-Dichtekarte</figcaption>
+        </figure>
+      </div>
+
+      <p class="quote reveal d2">
+        Was ein Förster in Tagen abschreitet, liest die Pipeline in Minuten.
+      </p>
+      <div class="rule reveal d3" style="max-width: 220px;"></div>
+      <div class="attribution reveal d3">Entstanden im Dialog mit einer KI · Richtung &amp; Verifikation: Mensch · 175 Tests als Sicherheitsnetz</div>
+
+      <!-- Übergang in die Live-Demo (letzte ~2 min des Vortrags) -->
+      <div class="demo-cue reveal d4">
+        <span class="demo-arrow">→</span>
+        <span>Live-Demo · Die Anwendung</span>
+      </div>
+      <div class="caption-mono reveal d4" style="margin-top: 24px;">Den Wald von oben zählen · Endprojekt · 20.07.2026</div>
+      <div class="caption-mono reveal d4" style="margin-top: 10px;">Diese Präsentation wurde mit KI erstellt.</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 3D scene (Three.js, ES module — lokale Kopie, läuft offline) -->
+<script type="importmap">
+{ "imports": { "three": "./three.module.js" } }
+</script>
+<script type="module" src="scene.js"></script>
+
+<!-- Overlay / UI logic -->
+<script src="ui.js"></script>
+
+</body>
+</html>
